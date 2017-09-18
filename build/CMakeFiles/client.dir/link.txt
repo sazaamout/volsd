@@ -1,0 +1,1 @@
+/usr/bin/c++   -Wall -std=c++0x -pthread    CMakeFiles/client.dir/src/client.cpp.o CMakeFiles/client.dir/src/Utils.cpp.o CMakeFiles/client.dir/src/Logger.cpp.o CMakeFiles/client.dir/src/Disks.cpp.o CMakeFiles/client.dir/src/ClientSocket.cpp.o CMakeFiles/client.dir/src/Socket.cpp.o  -o bin/client -rdynamic 

@@ -1,0 +1,1 @@
+/usr/bin/c++   -Wall -std=c++0x -pthread    CMakeFiles/sync.dir/src/sync.cpp.o CMakeFiles/sync.dir/src/Utils.cpp.o CMakeFiles/sync.dir/src/Logger.cpp.o CMakeFiles/sync.dir/src/Disks.cpp.o CMakeFiles/sync.dir/src/ServerSocket.cpp.o CMakeFiles/sync.dir/src/Socket.cpp.o  -o bin/sync -rdynamic 
