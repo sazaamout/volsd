@@ -4,7 +4,7 @@
 #include "ServerSocket.h"
 #include "Utils.h"
 #include "Logger.h"
-#include "DispatcherConfig.h"
+#include "Config.h"
 
 #include <string>
 #include <iostream>

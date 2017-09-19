@@ -9,6 +9,26 @@ set(DISPATCHER_PATCH_VERSION 0)
 set(DISPATCHER_VERSION
   ${DISPATCHER_MAJOR_VERSION}.${DISPATCHER_MINOR_VERSION}.${DISPATCHER_PATCH_VERSION})
 
+set(MANAGER_MAJOR_VERSION 1)
+set(MANAGER_MINOR_VERSION 0)
+set(MANAGER_PATCH_VERSION 0)
+set(MANAGER_VERSION
+  ${MANAGER_MAJOR_VERSION}.${MANAGER_MINOR_VERSION}.${MANAGER_PATCH_VERSION})
+
+set(SYNC_MAJOR_VERSION 1)
+set(SYNC_MINOR_VERSION 0)
+set(SYNC_PATCH_VERSION 0)
+set(SYNC_VERSION
+  ${SYNC_MAJOR_VERSION}.${SYNC_MINOR_VERSION}.${SYNC_PATCH_VERSION})
+
+set(CLIENT_MAJOR_VERSION 1)
+set(CLIENT_MINOR_VERSION 0)
+set(CLIENT_PATCH_VERSION 0)
+set(CLIENT_VERSION
+  ${CLIENT_MAJOR_VERSION}.${CLIENT_MINOR_VERSION}.${CLIENT_PATCH_VERSION})
+
+
+
 # set the out directory. This will put the executables into bin
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
  
@@ -18,8 +38,8 @@ include_directories(conf)
 # configure a header file to pass some of the CMake settings
 # to the source code
 configure_file (
-  "${CMAKE_SOURCE_DIR}/conf/DispatcherConfig.h.in"
-  "${CMAKE_SOURCE_DIR}/include/DispatcherConfig.h"
+  "${CMAKE_SOURCE_DIR}/conf/Config.h.in"
+  "${CMAKE_SOURCE_DIR}/include/Config.h"
   )
 
 set(CMAKE_CXX_FLAGS "-Wall -std=c++0x -pthread")
