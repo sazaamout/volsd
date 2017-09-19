@@ -34,7 +34,7 @@ The system consist of the following components:
   - When the instance is terminated, the client program will release the mounted volume and send a "DiskRelease" message to the *dispatcher* which in turn will remove that volume from the disks list.
 
 # Dependencies And System Requirements #
-  The following packages are required to be installed on the machine
+  The following packages are required to be installed on the machine:
     1. AWS CLI version 1.10.60 (minimum)
     2. rsync version 3.0.6
     *Note: This program is tested on a centos 6.x EC2 Instance (t1.small)
