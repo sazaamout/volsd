@@ -1,1 +1,0 @@
-/usr/bin/c++   -Wall -std=c++0x -pthread    CMakeFiles/manager.dir/src/manager.cpp.o CMakeFiles/manager.dir/src/Utils.cpp.o CMakeFiles/manager.dir/src/Logger.cpp.o CMakeFiles/manager.dir/src/Disks.cpp.o CMakeFiles/manager.dir/src/Snapshots.cpp.o  -o bin/manager -rdynamic 

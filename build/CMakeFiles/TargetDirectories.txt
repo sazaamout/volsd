@@ -1,4 +1,0 @@
-/home/cde/saad/code/c++/volumeDispatcher/build/CMakeFiles/client.dir
-/home/cde/saad/code/c++/volumeDispatcher/build/CMakeFiles/dispatcher.dir
-/home/cde/saad/code/c++/volumeDispatcher/build/CMakeFiles/manager.dir
-/home/cde/saad/code/c++/volumeDispatcher/build/CMakeFiles/sync.dir
