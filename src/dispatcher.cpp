@@ -45,8 +45,8 @@
 	std::string get_ports();
 	int get_available_port();
 	int disk_prepare(utility::Volume& volume, Disks& dc, int transactionId, Logger& logger);
-	int parse_arguments(int argc, char* argv[]);
-	
+	//int parse_arguments(int argc, char* argv[]);
+        void get_arguments( int argc, char **argv );
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  MAIN PROGRAM
@@ -62,17 +62,21 @@ int main ( int argc, char* argv[] )
 	int transId;
 
 
-	if (!parse_arguments(argc, argv)){
-	  return 1;
-	}
-	
+        // this function will overwite the _conffile varibles if user specified one, otherwise, it will use the default.
+        _conffile = DISPATCHER_CONF_FILE;
+        get_arguments( argc, argv );
+
+        if (!utility::is_root()){
+          std:: cout << "program must be ran as root\n";
+          return 1;
+        }
+
 	std:: cout << "program starts...\n";
         return 1;
 
-	if (!utility::is_root()){
-		std:: cout << "program must be ran as root\n";
-		return 1;
-	}
+	//if (!parse_arguments(argc, argv)){
+	//  return 1;
+	//}
 	
 	
 	// load the configurations 
@@ -532,7 +536,7 @@ int main ( int argc, char* argv[] )
 	/* -----------------------------------------------------------------
        PARSE_ARGUMENTS
 	----------------------------------------------------------------- */
-	int parse_arguments(int argc, char* argv[]){
+/*	int parse_arguments(int argc, char* argv[]){
 
 		std::string str;
 		for (int i=0; i<argc; i++){
@@ -557,3 +561,54 @@ int main ( int argc, char* argv[] )
 			
 		return true;
 	}
+
+*/
+       void get_arguments( int argc, char **argv ){
+          int index;
+          int c;
+
+          opterr = 0;
+
+          while ((c = getopt (argc, argv, "hvsc:")) != -1) 
+            switch (c) {   
+              case 'h':
+                printf("%s: [options]\n", argv[0]);
+                printf(" options:\n");
+                printf("   -v   version number\n");
+                printf("   -c   config file path\n");
+                printf("   -s   dump stdout and stderr to the screen\n");
+                printf("   -h   print this help menu\n");
+                exit (0);
+              case 'v':
+                printf("Dispatcher version: %i.%i.%i\n", 
+                      DISPATCHER_MAJOR_VERSION, DISPATCHER_MINOR_VERSION, DISPATCHER_PATCH_VERSION);
+                exit (0);
+              case 's':
+                _onscreen = 1;
+                break;
+              case 'c':
+                _conffile = optarg;
+                break;
+              case '?':
+                if (optopt == 'c'){
+                  fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+                  fprintf (stderr, "use -h for help.\n");
+                }else if (isprint (optopt)){
+                  fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+                  fprintf (stderr, "use -h for help.\n");
+                }else{
+                  fprintf (stderr, "Unknown option character `\\x%x'.\n", optopt);
+                  fprintf (stderr, "use -h for help.\n");
+                }
+                exit(1);
+              default:
+                exit(0); 
+            }
+
+          for (index = optind; index < argc; index++){
+            printf ("Non-option argument %s\n", argv[index]);
+            fprintf (stderr, "use -h for help.\n");
+            exit(1);
+          }
+      }
+

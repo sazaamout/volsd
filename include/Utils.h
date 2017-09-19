@@ -108,6 +108,7 @@ namespace utility
 	std::string rsync_errorCodetoString(int errorCode);
 	
 	std::string get_hostname();
+
 }
 
 #endif
