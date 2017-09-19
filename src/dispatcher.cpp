@@ -61,11 +61,14 @@ int main ( int argc, char* argv[] )
 	std::string msg;
 	int transId;
 
+
 	if (!parse_arguments(argc, argv)){
-		std:: cout << "must specify conf file location\n";
-		return 1;
+	  return 1;
 	}
 	
+	std:: cout << "program starts...\n";
+        return 1;
+
 	if (!utility::is_root()){
 		std:: cout << "program must be ran as root\n";
 		return 1;
@@ -534,14 +537,23 @@ int main ( int argc, char* argv[] )
 		std::string str;
 		for (int i=0; i<argc; i++){
 			str = argv[i];
+			if ( (str == "--version") || (str == "-v") ){
+                          std::cout << "Dispatcher version: " << DISPATCHER_MAJOR_VERSION << '.' 
+                                                              << DISPATCHER_MINOR_VERSION << '.' 
+                                                              << DISPATCHER_PATCH_VERSION << std::endl;
+                          return false;
+                        }
+
 			if (str == "--screen")
 				_onscreen = true;
 				
 			if ( str.find("--conf") != std::string::npos )
 				_conffile = str.substr(str.find("=")+1, str.find("\n"));
 		}
-		if (_conffile == "")
-			return false;
+		if (_conffile == ""){
+                  std::cout << "cannot locate conf file\n";
+		  return false;
+                }
 			
 		return true;
 	}
