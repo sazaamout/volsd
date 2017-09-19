@@ -40,6 +40,13 @@ The system consist of the following components:
   3. cmake /path/to/the/root/of/this/project (cmake ../)
   4. make
 
+# How to run it? #
+  type the following commands:
+  ```
+  dispatcher --conf=/path/to/config/file [--screen]
+  manager --conf=/path/to/config/file [--screen]
+  synchronizer --conf=/path/to/config/file [--screen]
+  ```
 # System Requirements #
   This is tested on a centos 6.x EC2 Instance (t1.small)
 
