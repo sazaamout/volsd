@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 2.8.9)
 
 project(volumeDispatcher)
 
+# set some global variables
+set(EXE_INSTALL_DIR ${CMAKE_BINARY_DIR}/install/bin)
+set(CFG_INSTALL_DIR ${CMAKE_BINARY_DIR}/install/etc/volumeDispatcher)
+
 # set the version
 set(DISPATCHER_MAJOR_VERSION 1)
 set(DISPATCHER_MINOR_VERSION 0)
@@ -56,9 +60,14 @@ add_executable(sync       ${SYNC})
 add_executable(client     ${CLIENT})
 
 # installations
-set(EXE_INSTALLATION_DIR ${CMAKE_BINARY_DIR}/install)
-install(TARGETS dispatcher DESTINATION ${EXE_INSTALLATION_DIR}/bin COMPONENT binaries)
-install(TARGETS manager    DESTINATION ${EXE_INSTALLATION_DIR}/bin COMPONENT binaries)
-install(TARGETS sync       DESTINATION ${EXE_INSTALLATION_DIR}/bin COMPONENT binaries)
-install(TARGETS client     DESTINATION ${EXE_INSTALLATION_DIR}/bin COMPONENT binaries)
-install(FILES   conf/config     DESTINATION ${EXE_INSTALLATION_DIR}/etc)
+#set(EXE_INSTALLATION_DIR ${CMAKE_BINARY_DIR}/install)
+install(TARGETS dispatcher      DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
+install(TARGETS manager         DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
+install(TARGETS sync            DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
+install(TARGETS client          DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
+install(FILES   conf/config     DESTINATION ${CFG_INSTALL_DIR} COMPONENT config  )
+
+message("--------------------------------------------------")
+message("Binaries will be placed in ${EXE_INSTALL_DIR}")
+message("Configurations files will be placed in ${CFG_INSTALL_DIR}")
+message("--------------------------------------------------")
