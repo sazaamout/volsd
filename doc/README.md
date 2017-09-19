@@ -17,17 +17,18 @@ The system consist of the following components:
   - Ensuring that we have the required number of disks at all time.
 
 ## 2. Dispatcher ## 
-  - Process "DiskRequest" from the EBSClient 
-  - Process "DiskRelease" from EBSClient 
+  - Process "DiskRequest" from clients 
+  - Process "DiskRelease" from clients
   - Process all of the administration request such as (list volumes, list volume status, etc.) 
   - maintains information about all of the created volumes such as status, mounting point, whether is mounted locally or at a remote server, and volume Id.
 
 ## 3. Synchronizer ## 
   - syncing all EBS volumes together whether they are mounted locally or mounted in a another ec2 instance. 
   - process the push and delete request from client 
-  - process the sync request issued by EBSManager to sync a newly created volume.
+  - process the sync request issued by Manager to sync a newly created volume.
 
 ## 4. Client ## 
-  - When exeuted at instance boot time, this progarm will send a request to EBSController to aquire a volume. EBSController will detch the volume and send it id to the EBSClient which in trune it will mount the given volume locally. 
-  - When exeuteed at instance termination time, the script will release the mounted volume and send a "DiskRelease" message to the EBSController which intruen will remove that volume from the disks list.
+  - This program must start when an instance bootup for the first time. It will send a DiskRequest to the dispatcher to acquire a volume. The dispatcher will detach a volume and send it that volume's id to the client. The client will mount the acquired volume As soon as it receives the volume Id.
+  - When the instance is terminated, the client program will release the mounted volume and send a "DiskRelease" message to the dispatcher which in turn will remove that volume from the disks list.
+
 
