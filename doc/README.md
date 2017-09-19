@@ -35,9 +35,9 @@ The system consist of the following components:
 
 # Dependencies And System Requirements #
   The following packages are required to be installed on the machine:
-    - AWS CLI version 1.10.60 (minimum)
-    - Rsync version 3.0.6
-    *Note: This program is tested on a centos 6.x EC2 Instance (t1.small)
+  - AWS CLI version 1.10.60 (minimum)
+  - Rsync version 3.0.6
+  *Note: This program is tested on a centos 6.x EC2 Instance (t1.small)
 
 # Installation #
   1. clone the project
