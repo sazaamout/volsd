@@ -32,6 +32,11 @@ namespace utility
 		bool status;
 	};
 
+    //struct ReturnValue {
+    //  std::string data;
+    //  std::string error;
+    //  std::vector<std::string> debug;
+    //};
     
     struct Configuration {
 		std::string Hostname;

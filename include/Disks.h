@@ -85,7 +85,9 @@ class Disks
     std::string get_device();
     std::string get_device(std::vector<std::string>& list);
     
-    
+    //utility::ReturnValue release ();
+	
+
         
 };
 

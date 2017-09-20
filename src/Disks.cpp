@@ -822,7 +822,7 @@ int Disks::ebsvolume_sync(std::stringstream& ss, std::string op, std::string pat
 }
 
 */
-
+/*
 int Disks::ebsvolume_sync(std::string destination, std::string source, int transcationId, Logger& logger){
         std::string output;
 
@@ -841,7 +841,7 @@ int Disks::ebsvolume_sync(std::string destination, std::string source, int trans
 
         return 1;
 }
-
+*/
 /*
 int Disks::ebsvolume_sync(std::string source, int transcationId, Logger& logger){
 
@@ -987,3 +987,71 @@ int Disks::ebsvolume_exist(std::string volId){
         myFile.clear();
         return 0;
 }
+
+/*
+utility::ReturnValue Disks::release () {
+	// this will perform the following tasks
+	// 1. get an idle volume
+	// 2. umount that volume from the localhost
+	// 3. detach that volume from localhost
+	// 4. change the volume status to 'inprogress'
+	
+	std::string volId;
+	utility::ReturnValue retval;
+	
+	retval.debug.push_back('searching for idle volume');
+    
+  
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // 1. Get Idle Volume  
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+    if ( ebsvolume_idle(v, transactionId, logger) ) {
+      logger.log("error", hostname, "Dispatcher", transactionId, "no more idle volume available", "DiskRequestThread");
+      return -1;
+    } else {
+      logger.log("info", hostname, "Dispatcher", transactionId, "idle volume found:[" + v.id + "]", "DiskRequestThread");
+      logger.log("info", hostname, "Dispatcher", transactionId, "set new volume's status to 'inprogress'", "DiskRequestThread");
+      m.lock();
+      if (!dc.ebsvolume_setstatus( "update", v.id, "inprogress", "none", "none", "none", transactionId, logger)){
+        logger.log("error", hostname, "Dispatcher", transactionId, "failed to update disk status", "DiskRequestThread");
+      }
+      m.unlock();
+			
+      logger.log("info", hostname, "Dispatcher", transactionId, "umounting volume", "DiskRequestThread");
+      
+      // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+      // 2. unmount disk
+      // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+      if (!dc.ebsvolume_umount(v, transactionId, logger)) {
+        logger.log("error", hostname, "Dispatcher", transactionId, "failed to umount volume", "DiskRequestThread");
+        logger.log("info", hostname, "Dispatcher", transactionId, "remove volume from volume list", "DiskRequestThread");
+        m.lock();
+        if (!dc.ebsvolume_setstatus( "delete", v.id, "", "", "", "", transactionId, logger)) {
+          logger.log("error", hostname, "Dispatcher", transactionId, "failed to update disk status", "DiskRequestThread");
+        }
+        m.unlock();
+        return -2;
+      }
+      logger.log("info", hostname, "Dispatcher", transactionId, "volume umounted", "DiskRequestThread");
+		
+      // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+      // 3. Detach the volume
+      // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+      logger.log("info", hostname, "Dispatcher", transactionId, "detaching volume", "DiskRequestThread");
+      if (!dc.ebsvolume_detach(v, transactionId, logger)) {
+        logger.log("error", hostname, "Dispatcher", transactionId, "failed to detach volume", "DiskRequestThread");
+        return -3;
+      }
+      logger.log("info", hostname, "Dispatcher", transactionId, "volume was detached", "DiskRequestThread");
+			
+      logger.log("info", hostname, "Dispatcher", transactionId, "remove mountpoint:[" + v.mountPoint +"]", "DiskRequestThread");
+      if (!dc.remove_mountpoint(v.mountPoint, transactionId, logger)){
+        logger.log("error", hostname, "Dispatcher", transactionId, "could not remove mountpoint", "DiskRequestThread");
+      }
+      logger.log("info", hostname, "Dispatcher", transactionId, "mount point was removed", "DiskRequestThread");
+    }
+
+    sleep(5);
+    return 1;
+}
+*/
