@@ -1,4 +1,3 @@
-
 #include "SocketException.h"
 #include "Disks.h"
 #include "ServerSocket.h"
@@ -16,37 +15,40 @@
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  GLOBALS VARAIBLES AND STRUCTURES
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/ 
-	utility::Port *portsArray;
-	utility::Configuration conf;
+  utility::Port *portsArray;
+  utility::Configuration conf;
+
+  std::string hostname; 
+  std::string instance_id;
 	
-	std::string hostname; 
-	std::string instance_id;
+  std::mutex m;
 	
-	std::mutex m;
+  std::vector<std::string>  devices_list;
 	
-	std::vector<std::string>  devices_list;
-	
-	bool _onscreen = false;
-	std::string _conffile;
-	int _loglevel;
+  bool _onscreen = false;
+  std::string _conffile;
+  int _loglevel;
 
 	
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  FUNCTION PROTOTYPES
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-	void disk_request_task(int portNo, std::string request, std::string ip, Disks& d, int transId);
-	void disk_release_task(Disks &diskcontroller, std::string volId, int transId);
-	void debug_task(int portNo, Disks& d);
-	void EBSVolumeManager_task();
-	void EBSVolumeSync_task();
-	void populate_port_array();
-	void print_ports();
+  // thread related functions
+  void disk_request_task(int portNo, std::string request, std::string ip, Disks& d, int transId);
+  void disk_release_task(Disks &diskcontroller, std::string volId, int transId);
+  void debug_task(int portNo, Disks& d);
 
-	std::string get_ports();
-	int get_available_port();
-	int disk_prepare(utility::Volume& volume, Disks& dc, int transactionId, Logger& logger);
-	//int parse_arguments(int argc, char* argv[]);
-        void get_arguments( int argc, char **argv );
+  void EBSVolumeManager_task();
+  void EBSVolumeSync_task();
+
+  void populate_port_array();
+  std::string get_ports();
+  void print_ports();
+  int get_available_port();
+
+  int disk_prepare(utility::Volume& volume, Disks& dc, int transactionId, Logger& logger);
+  void get_arguments( int argc, char **argv );
+  //int parse_arguments(int argc, char* argv[]);
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  MAIN PROGRAM
@@ -57,228 +59,245 @@ using namespace utility;
 int main ( int argc, char* argv[] ) 
 {
 		
-	std::string request, ack, cip;
-	std::string msg;
-	int transId;
+  std::string request, ack, cip;
+  std::string msg;
+  int transId;
 
+  // user must be root
+  if (!utility::is_root()){
+    std::cout << "program must be ran as root\n";
+    return 1;
+  }
 
-        // this function will overwite the _conffile varibles if user specified one, otherwise, it will use the default.
-        _conffile = DISPATCHER_CONF_FILE;
-        get_arguments( argc, argv );
+  // This function will overwite the _conffile varibles if user specified one, 
+  // otherwise, it will use the default.
+  _conffile = DISPATCHER_CONF_FILE;
+  get_arguments( argc, argv );
+        
+                                 
+  std::cout << "program starts...\n";
+  return 1;
 
-        if (!utility::is_root()){
-          std:: cout << "program must be ran as root\n";
-          return 1;
-        }
-
-	std:: cout << "program starts...\n";
-        return 1;
-
-	//if (!parse_arguments(argc, argv)){
-	//  return 1;
-	//}
+  //if (!parse_arguments(argc, argv)){
+  //  return 1;
+  //}
 	
-	
-	// load the configurations 
-	utility::load_configuration(conf, _conffile);
-	_loglevel = conf.ControllerLoglevel;
-	//utility::print_configuration(conf);
-
-	
-	Logger logger(_onscreen, conf.ControllerLogFile, _loglevel);
-	
-	hostname    = utility::get_hostname();
-	instance_id = utility::get_instance_id();
-
-	Disks diskcontroller(true, conf.TempMountPoint, conf.VolumeFilePath);
-
-	// Populating ports array
-	portsArray = new Port[10];
-	populate_port_array();
-	//print_ports();
-
-	// start the debug thread
-	logger.log("info", hostname, "EBSController", 0, "starting the debug thread");
-	thread debug_thread(debug_task, 8000, std::ref(diskcontroller));
-	debug_thread.detach();
+  // -------------------------------------------------------------------
+  // Initializations	
+  // -------------------------------------------------------------------
+  // 1. Load the configurations from conf file
+  utility::load_configuration(conf, _conffile);
+  _loglevel = conf.ControllerLoglevel;
   
-	try {
-		// Create the socket
-		ServerSocket server ( 9000 );
+  // 2. prepare the Logger
+  Logger logger(_onscreen, conf.ControllerLogFile, _loglevel);
+  Disks diskcontroller(true, conf.TempMountPoint, conf.VolumeFilePath);
 
-		while ( true ) {
+  // 3. get the hostname and the Amazon Instance Id for this machine
+  hostname    = utility::get_hostname();
+  instance_id = utility::get_instance_id();
 
-			transId = utility::get_transaction_id();
-			logger.log("debug", hostname, "EBSController", 0, "waiting for requests from clients ...");
-			ServerSocket new_sock;
-			// here, make a new threads. Every new clinet needs a threds. 
-			server.accept ( new_sock );
-		  
-			cip = server.client_ip();
+  // 4. Populating ports array. These ports are there to be able to communicate
+  // with multiple clients at once
+  portsArray = new Port[10];
+  populate_port_array();
 
-			logger.log("info", hostname, "EBSController", transId, "incoming connection accepted from " + cip);
-			try {
-				while ( true ) {
-					new_sock >> request;
-					utility::clean_string(request);
+  // 5. start the admin thread
+  logger.log("info", hostname, "EBSController", 0, "starting the debug thread");
+  thread debug_thread(debug_task, 8000, std::ref(diskcontroller));
+  debug_thread.detach();
+  
 
-					if ( request.compare("DiskRequest") == 0 ){
-						logger.log("info", hostname, "EBSController", transId, "request:[" + request + "] from client:[" + cip + "]");
-						int availablePort = get_available_port();
-						new_sock << utility::to_string(availablePort);
+  // -------------------------------------------------------------------
+  // Core Functionality
+  // -------------------------------------------------------------------
+  try {
+    // Create the socket
+    ServerSocket server ( 9000 );
 
-						logger.log("debug", hostname, "EBSController", transId, "reserving port:[" + utility::to_string(availablePort) + "] to client:[" + cip + "]");
+    while ( true ) 
+    {
+      transId = utility::get_transaction_id();
+      logger.log("debug", hostname, "EBSController", 0, "waiting for requests from clients ...");
+      ServerSocket new_sock;
+      
+      // Accept the incoming connection
+      server.accept ( new_sock );
+      // client Ip address		  
+      cip = server.client_ip();
+
+      logger.log("info", hostname, "EBSController", transId, "incoming connection accepted from " + cip);
+      
+      try {
+        while ( true ) 
+        {
+          // reads client request
+          new_sock >> request;
+          utility::clean_string(request);
+
+          if ( request.compare("DiskRequest") == 0 ) {
+            
+            // the reply to the client will be a communication port. The new port is used as
+            // communication channel between the dispatcher and the client.
+            logger.log("info", hostname, "EBSController", transId, "request:[" + request + "] from client:[" + cip + "]");
+            int availablePort = get_available_port();
+            new_sock << utility::to_string(availablePort);
+
+            logger.log( "debug", hostname, "EBSController", transId, 
+                        "reserving port:[" + utility::to_string(availablePort) + "] to client:[" + cip + "]"
+            );
+
+            new_sock.close_socket();
+            // start a new thread which will listen on the port sent to the client. 
+            // this thread will handle the disk request
+            thread t1(disk_request_task, availablePort, request, cip, std::ref(diskcontroller), transId);
+            t1.detach();
+            break;
+
+          } else if ( request.find("DiskRelease") != std::string::npos ) {
+            
+            // DiskRelease request format: "DiskRelease:volId"
+            logger.log("info", hostname, "EBSController", transId, "request:[" + request + "] from client:[" + cip + "]");
+	    std::string volId = request.substr( request.find(":")+1, request.find("\n") );	
 					
-						new_sock.close_socket();
+	    if ( (volId == "") || (volId == " ") ) {
+              logger.log("error", hostname, "EBSController", transId, "client did not supply volume id to release");
+              new_sock.close_socket();
+              break;
+            }
+					
+            thread disk_release_thread(disk_release_task, std::ref(diskcontroller), volId, transId);
+            disk_release_thread.detach();
+					
+            new_sock.close_socket();
+            break;
+          			
+          } 
+          /*else if ( request.find("pushRequest") != std::string::npos ) {
 
-						thread t1(disk_request_task, availablePort, request, cip, std::ref(diskcontroller), transId);
-						t1.detach();
-						break;
-
-					}else if ( request.find("DiskRelease") != std::string::npos ) {
-						// Message Format:  DiskRelease:volId
-						logger.log("info", hostname, "EBSController", transId, "request:[" + request + "] from client:[" + cip + "]");
-						std::string volId = request.substr( request.find(":")+1, request.find("\n") );	
+            logger.log("info", hostname, "EBSController", transId, "request:[" + request + "] from client:[" + cip + "]");
+            //extract push path
+            sleep(60);
+            msg = "request recived";
+            new_sock << msg;
 					
-						if ( (volId == "") || (volId == " ") ) {
-							//utility::logger("info", hostname,"", "server", transId, "" );
-							logger.log("error", hostname, "EBSController", transId, "client did not supply volume id to release");
-							new_sock.close_socket();
-							break;
-						}
-					
-						thread disk_release_thread(disk_release_task, std::ref(diskcontroller), volId, transId);
-						disk_release_thread.detach();
-					
-						new_sock.close_socket();
-						break;
-				
-					}else if ( request.find("pushRequest") != std::string::npos ) {
-						logger.log("info", hostname, "EBSController", transId, "request:[" + request + "] from client:[" + cip + "]");
-						//extract push path
-						sleep(60);
-						msg = "request recived";
-						new_sock << msg;
-					
-					}else {
+          } */
+          else {
 						
-						msg = "unknown request, shutting down connection\n";
-						logger.log("error", hostname, "EBSController", transId, "unknown request:[" + request + "], shutting down connection");
-						new_sock << msg;
-						break;
-					}
-				} // end while
-			} // end try
-			catch ( SocketException& e) {
-				logger.log("error", hostname, "EBSController", transId, "Exception was caught: " + e.description());
-			}
-		} // end of outer while
-	} // end outer try
-	catch ( SocketException& e ) {
-		logger.log("error", hostname, "EBSController", transId, "Exception was caught: " + e.description());
-	}
-
-	return 0;
+            msg = "unknown request, shutting down connection\n";
+            logger.log("error", hostname, "EBSController", transId, "unknown request:[" + request + "], shutting down connection");
+            new_sock << msg;
+            break;
+          }
+        } // end while
+      } catch ( SocketException& e) {
+        logger.log("error", hostname, "EBSController", transId, "Exception was caught: " + e.description());
+      }
+    } // end of outer while
+  } catch ( SocketException& e ) {
+    logger.log("error", hostname, "EBSController", transId, "Exception was caught: " + e.description());
+  }
+  
+  return 0;
 }
 
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- FUNCTION PROTOTYPES
- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Functions 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	/* -----------------------------------------------------------------
-       DISK_REQUEST_TASK
-	----------------------------------------------------------------- */
-	void disk_request_task(int portNo, std::string request, std::string ip, Disks& dc, int transId) 
-	{
-		Logger logger(_onscreen, conf.ControllerLogFile, _loglevel);
+  // -------------------------------------------------------------------
+  // DISK_REQUEST_TASK
+  // -------------------------------------------------------------------
+  void disk_request_task(int portNo, std::string request, std::string ip, Disks& dc, int transId) {
+
+    Logger logger(_onscreen, conf.ControllerLogFile, _loglevel);
+    logger.log("debug", hostname, "EBSController", transId, 
+               "awaiting clinet to connect tp port:[" + utility::to_string(portNo) + "]", "DiskRequestThread"
+    );
 		
-		logger.log("debug", hostname, "EBSController", transId, "awaiting clinet to connect tp port:[" + utility::to_string(portNo) + "]", "DiskRequestThread");
+    //int transaction = utility::get_transaction_id();   
+    //int transaction = utility::get_transaction_id();   
 		
-		//int transaction = utility::get_transaction_id();   
-		//int transaction = utility::get_transaction_id();   
+    utility::Volume v;
+    std::string msg, ack;
 		
-		utility::Volume v;
-		std::string msg, ack;
+    ServerSocket server ( portNo );
 		
-		ServerSocket server ( portNo );
+    ServerSocket s;
+    server.accept ( s );
 		
-		ServerSocket s;
-		server.accept ( s );
-		
-		int res = disk_prepare(v, dc, transId, logger);
-		if (res == -1) {
-			s << "MaxDisksReached";
-			portsArray[portNo-9000-1].status=false;
-			return;
-		}
+    int res = disk_prepare(v, dc, transId, logger);
+    if (res == -1) {
+      s << "MaxDisksReached";
+      portsArray[portNo-9000-1].status=false;
+      return;
+    }
 			
-		if (res == -2){
-			s << "umountFailed";
-			portsArray[portNo-9000-1].status=false;
-			return;
-		}
+    if (res == -2){
+      s << "umountFailed";
+      portsArray[portNo-9000-1].status=false;
+      return;
+    }
 			
-		if (res == -3){
-			s << "detachFailed";
-			portsArray[portNo-9000-1].status=false;
-			return;
-		}
+    if (res == -3){
+      s << "detachFailed";
+      portsArray[portNo-9000-1].status=false;
+      return;
+    }
 		
-		logger.log("info", hostname, "EBSController", transId, "sending to client volume:[" + v.id + "]", "DiskRequestThread");
+    logger.log("info", hostname, "EBSController", transId, "sending to client volume:[" + v.id + "]", "DiskRequestThread");
 		
-		try {
-		  s << v.id;
+    try {
+      s << v.id;
+      logger.log("info", hostname, "EBSController", transId, "waiting for ACK from Client", "DiskRequestThread");
+      
+      s >> ack;
+		  
+    } catch ( SocketException& e) {
+      ack = "FAILED";
+      logger.log("error", hostname, "EBSController", transId, "connection closed: " + e.description(), "DiskRequestThread");		  
+      portsArray[portNo-9000-1].status=false;
+      return;
+    }
 
-		  logger.log("info", hostname, "EBSController", transId, "waiting for ACK from Client", "DiskRequestThread");
-		  s >> ack;
-		  
-		} catch ( SocketException& e) {
-		  ack = "FAILED";
-		  logger.log("error", hostname, "EBSController", transId, "connection closed: " + e.description(), "DiskRequestThread");		  
-		  portsArray[portNo-9000-1].status=false;
-		  return;
-		}
+    if (ack.compare("OK") == 0){
+      logger.log("info", hostname, "EBSController", transId, "ACK recived from client: [OK]" , "DiskRequestThread");		  
 
-		if (ack.compare("OK") == 0){
-		  logger.log("info", hostname, "EBSController", transId, "ACK recived from client: [OK]" , "DiskRequestThread");		  
-
-		  //label disk as used
-		  logger.log("info", hostname, "EBSController", transId, "set volume's status to 'used' by:[" + ip +"]" , "DiskRequestThread");		  
+      //label disk as used
+      logger.log("info", hostname, "EBSController", transId, "set volume's status to 'used' by:[" + ip +"]" , "DiskRequestThread");		  
+      m.lock();
+      int res = dc.ebsvolume_setstatus( "update", v.id, "used", ip, "/home/cde", "none", transId, logger );
+      m.unlock();
 		  
-		  m.lock();
-			int res = dc.ebsvolume_setstatus( "update", v.id, "used", ip, "/home/cde", "none", transId, logger );
-		  m.unlock();
-		  
-		  if (!res) {
-			m.lock();
-				dc.ebsvolume_setstatus( "update", v.id, "idle", v.attachedTo, v.mountPoint, v.device, transId, logger );
-			m.unlock();
-			logger.log("error", hostname, "EBSController", transId, "ACK [OK] was recived but failed to write to volume file" , "DiskRequestThread");		  
-			logger.log("error", hostname, "EBSController", transId, "aborting" , "DiskRequestThread");		  
-		  }else {
-			  logger.log("info", hostname, "EBSController", transId, "disk:[" + v.id + "] is mounted on client machine" , "DiskRequestThread");		  
-		  }
-		  
-		}else {
-		 /*  Ideally, we want to put disk back, but for now, just delete the disk and the EBSmanager will create another one.
-		  */
-		  logger.log("info", hostname, "EBSController", transId, "ACK from clinent was [" + ack + "]" , "DiskRequestThread");	
-		  logger.log("info", hostname, "EBSController", transId, "delete volume from volumes list" , "DiskRequestThread");	
-		  m.lock();
-			dc.ebsvolume_setstatus( "delete", v.id, "idle", v.attachedTo, v.mountPoint, v.device, transId, logger);
-		  m.unlock();
+      if (!res) {
+        m.lock();
+	dc.ebsvolume_setstatus( "update", v.id, "idle", v.attachedTo, v.mountPoint, v.device, transId, logger );
+        m.unlock();
+        logger.log("error", hostname, "EBSController", transId, "ACK [OK] was recived but failed to write to volume file" , "DiskRequestThread");		  
+        logger.log("error", hostname, "EBSController", transId, "aborting" , "DiskRequestThread");		  
+      }else {
+        logger.log("info", hostname, "EBSController", transId, "disk:[" + v.id + "] is mounted on client machine" , "DiskRequestThread");		  
+      }
+    } else {
+      // Ideally, we want to put disk back, but for now, just delete the disk and the EBSmanager will create another one.
+      logger.log("info", hostname, "EBSController", transId, "ACK from clinent was [" + ack + "]" , "DiskRequestThread");	
+      logger.log("info", hostname, "EBSController", transId, "delete volume from volumes list" , "DiskRequestThread");	
+      m.lock();
+      dc.ebsvolume_setstatus( "delete", v.id, "idle", v.attachedTo, v.mountPoint, v.device, transId, logger);
+      m.unlock();
 		  		  
-		  logger.log("info", hostname, "EBSController", transId, "aborting ..." , "DiskRequestThread");		  
-		  
-		  portsArray[portNo-9000-1].status=false;
-		  return;
-		}
-		// labling port as not used
-		portsArray[portNo-9000-1].status=false;
+      logger.log("info", hostname, "EBSController", transId, "aborting ..." , "DiskRequestThread");		  
+	  
+      portsArray[portNo-9000-1].status=false;
+      return;
+    }
+
+    // labling port as not used
+    portsArray[portNo-9000-1].status=false;
 		
-		//logger.flush();
-	}
+    //logger.flush();
+}
 
 
 	/* -----------------------------------------------------------------
