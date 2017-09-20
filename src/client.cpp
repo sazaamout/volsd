@@ -12,53 +12,54 @@
 #include "Logger.h"
 
 
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------------------------
 // GLOBALS VARAIBLES AND STRUCTURES
-// -----------------------------------------------------------------------------
-	#define INSTANCE_VIRT_TYPE  HVM;
-	#define aws_region  "us_east_1";
-	std::string volume; // ? do we need?
+// ----------------------------------------------------------------------
+#define INSTANCE_VIRT_TYPE  HVM;
+#define aws_region  "us_east_1";
+std::string volume; // ? do we need?
+std::string instance_id;
 
-    std::string instance_id;
 // -----------------------------------------------------------------------------
 // FUNCTIONS PROTOTYPE
 // -----------------------------------------------------------------------------
-	int  mount_vol(std::string volume, std::string mountPoint, Logger& logger);
-	bool disk_request(std::string mountPoint);
-	void disk_release(std::string mountPoint);
-	void disk_push(std::string mountPoint);
+int  mount_vol(std::string volume, std::string mountPoint, Logger& logger);
+bool disk_request(std::string mountPoint);
+void disk_release(std::string mountPoint);
+void disk_push(std::string mountPoint);
+
 // -----------------------------------------------------------------------------
 // MAIN PROGRAM
 // -----------------------------------------------------------------------------
-	using namespace std;
-	using namespace utility;
-	
-	int main ( int argc, char* argv[] )
-	{
-		if (!utility::is_root()){
-			std::cout << "user is not root\n";
-			return 1;
-		}
-		std::string volume, output;
+using namespace std;
+using namespace utility;
+
+int main ( int argc, char* argv[] )
+{
+  if (!utility::is_root()){
+    std::cout << "user is not root\n";
+    return 1;
+  }
+  std::string volume, output;
 		
-		std::string request = argv[1];
-		std::string mountPoint = argv[2];
-		// Collect instance information
-		instance_id = utility::get_instance_id(); 
+  std::string request = argv[1];
+  std::string mountPoint = argv[2];
+  // Collect instance information
+  instance_id = utility::get_instance_id(); 
 			
-		if (request.compare("DiskRequest") == 0) {
-		        if (!disk_request(mountPoint)){
-                          return 1; // exit with error
-                        }
-		} else if ( request.compare("DiskRelease") == 0){
-			disk_release(mountPoint);
-		} else {
-			std::cout << "unknown request\n";
-			return 0;
-		}
+  if (request.compare("DiskRequest") == 0) {
+    if (!disk_request(mountPoint)){
+      return 1; // exit with error
+    }
+  } else if ( request.compare("DiskRelease") == 0){
+    disk_release(mountPoint);
+  } else {
+    std::cout << "unknown request\n";
+    return 0;
+  }
 		
-		return 0;
-	}
+  return 0;
+}
 
 // -----------------------------------------------------------------------------
 // FUNCTIONS
