@@ -37,6 +37,8 @@ The system consist of the following components:
   The following packages are required to be installed on the machine:
   - AWS CLI version 1.10.60 (minimum)
   - Rsync version 3.0.6
+  - cmake version 2.8.12.2
+
   *Note: This program is tested on a centos 6.x EC2 Instance (t1.small)
 
 # Installation #
