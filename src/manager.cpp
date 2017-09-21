@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
     
   // start a thread to create a snapshot every 4 hours
   logger.log("info", hostname, "EBSManager", 0, "starting the snapshot manager...");
-  std::thread snapshotManager_thread(createSnapshot_task, sshot, conf.SnapshotMaxNumber, conf.SnapshotFile, conf.SnapshotFrequency);
+  std::thread snapshotManager_thread(createSnapshot_task, std::ref(sshot), conf.SnapshotMaxNumber, conf.SnapshotFile, conf.SnapshotFrequency);
   snapshotManager_thread.detach();
   
   // start the cleaner thread
