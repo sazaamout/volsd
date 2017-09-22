@@ -614,30 +614,3 @@ int main ( int argc, char* argv[] )
   }
 
 
-
-int parse_arguments(int argc, char* argv[]){
-
-                std::string str;
-                for (int i=0; i<argc; i++){
-                        str = argv[i];
-                        if ( (str == "--version") || (str == "-v") ){
-                          std::cout << "Dispatcher version: " << DISPATCHER_MAJOR_VERSION << '.' 
-                                                              << DISPATCHER_MINOR_VERSION << '.' 
-                                                              << DISPATCHER_PATCH_VERSION << std::endl;
-                          return false;
-                        }
-
-                        if (str == "--screen")
-                                _onscreen = true;
-                                
-                        if ( str.find("--conf") != std::string::npos )
-                                _conffile = str.substr(str.find("=")+1, str.find("\n"));
-                }
-                if (_conffile == ""){
-                  std::cout << "cannot locate conf file\n";
-                  return false;
-                }
-                        
-                return true;
-        }
-

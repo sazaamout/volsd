@@ -989,7 +989,7 @@ int Disks::ebsvolume_exist(std::string volId){
 }
 
 /*
-utility::ReturnValue Disks::release () {
+utility::ReturnValue Disks::release ( int transactionId, Logger& logger ) {
 	// this will perform the following tasks
 	// 1. get an idle volume
 	// 2. umount that volume from the localhost
