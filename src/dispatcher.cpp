@@ -1,5 +1,5 @@
 #include "SocketException.h"
-#include "Disks.h"
+#include "Volumes.h"
 #include "ServerSocket.h"
 #include "Utils.h"
 #include "Logger.h"
@@ -34,10 +34,10 @@
  FUNCTION PROTOTYPES
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
   // thread related functions
-  void disk_request_task(int portNo, std::string request, std::string ip, Disks& d, int transId);
-  void disk_release_task(Disks &diskcontroller, std::string volId, int transId);
-  void volume_manager_task(Disks& d);
-  void debug_task(int portNo, Disks& d);
+  void disk_request_task(int portNo, std::string request, std::string ip, Volumes& d, int transId);
+  void disk_release_task(Volumes &diskcontroller, std::string volId, int transId);
+  void volume_manager_task(Volumes& d);
+  void debug_task(int portNo, Volumes& d);
 
   //void EBSVolumeManager_task();
   //void EBSVolumeSync_task();
@@ -47,7 +47,7 @@
   void print_ports();
   int get_available_port();
 
-  int disk_prepare(utility::Volume& volume, Disks& dc, int transactionId, Logger& logger);
+  int disk_prepare(utility::Volume& volume, Volumes& dc, int transactionId, Logger& logger);
   void get_arguments( int argc, char **argv );
   //int parse_arguments(int argc, char* argv[]);
 
@@ -93,8 +93,8 @@ int main ( int argc, char* argv[] )
   utility::folders_create( conf.DispatcherLogPrefix );
   
   Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
-  Disks diskcontroller(true, conf.TempMountPoint, conf.VolumeFilePath);
-
+  Volumes diskcontroller(true, conf.TempMountPoint, conf.VolumeFilePath);
+  
   // 3. get the hostname and the Amazon Instance Id for this machine
   hostname    = utility::get_hostname();
   instance_id = utility::get_instance_id();
@@ -114,7 +114,7 @@ int main ( int argc, char* argv[] )
 
 
   logger.log("info", hostname, "Dispatcher", 0, "dispatcher programs started");
-  utility::print_configuration(conf);
+  //utility::print_configuration(conf);
   return 1;
 
   // -------------------------------------------------------------------
@@ -218,7 +218,7 @@ int main ( int argc, char* argv[] )
   // -------------------------------------------------------------------
   // DISK_REQUEST_TASK
   // -------------------------------------------------------------------
-  void disk_request_task(int portNo, std::string request, std::string ip, Disks& dc, int transId) {
+  void disk_request_task(int portNo, std::string request, std::string ip, Volumes& dc, int transId) {
 	
     Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
     
@@ -312,7 +312,7 @@ int main ( int argc, char* argv[] )
   // -------------------------------------------------------------------
   // Volume Manager task
   // -------------------------------------------------------------------
-  void volume_manager_task(Disks& d){
+  void volume_manager_task(Volumes& d){
 
 	Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
 	
@@ -324,7 +324,7 @@ int main ( int argc, char* argv[] )
   // -------------------------------------------------------------------
   // DISK_PREPARE
   // -------------------------------------------------------------------
-  int disk_prepare(utility::Volume& v, Disks& dc, int transactionId, Logger& logger) {
+  int disk_prepare(utility::Volume& v, Volumes& dc, int transactionId, Logger& logger) {
 
     std::string volId;
     logger.log("info", hostname, "Dispatcher", transactionId, "get idle volume from volumes file", "DiskRequestThread");
@@ -386,7 +386,7 @@ int main ( int argc, char* argv[] )
   // -------------------------------------------------------------------
   // DISK_RELEASE_TASK
   // -------------------------------------------------------------------
-  void disk_release_task(Disks &dc, std::string volId, int transId) {
+  void disk_release_task(Volumes &dc, std::string volId, int transId) {
 		
     Logger logger(_onscreen, conf.DispatcherLogPrefix, _loglevel);
 		
@@ -479,7 +479,7 @@ int main ( int argc, char* argv[] )
   // -------------------------------------------------------------------
   // DEBUG_TASK
   // -------------------------------------------------------------------
-  void debug_task(int portNo, Disks& dc) {
+  void debug_task(int portNo, Volumes& dc) {
 	  
     Logger logger(_onscreen, conf.DispatcherLogPrefix, _loglevel);
 		  

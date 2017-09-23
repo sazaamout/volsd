@@ -7,7 +7,7 @@
 #include "ServerSocket.h"
 #include "SocketException.h"
 
-#include "Disks.h"
+#include "Volumes.h"
 #include "Utils.h"
 #include "Logger.h"
 
@@ -257,7 +257,7 @@ int main(int argc, char* argv[])
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
         // 1) sync path to local filesystem
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        std::stringstream l_ss( Disks::ebsvolume_list("local", conf.VolumeFilePath) );
+        std::stringstream l_ss( Volumes::ebsvolume_list("local", conf.VolumeFilePath) );
 
           
         for (int ii = 0; l_ss >> mp; ii++)
@@ -289,7 +289,7 @@ int main(int argc, char* argv[])
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
         // 2) sync path to remote filesystem
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        std::stringstream r_ss( Disks::ebsvolume_list("remote", conf.VolumeFilePath) );
+        std::stringstream r_ss( Volumes::ebsvolume_list("remote", conf.VolumeFilePath) );
         for (int ii = 0; r_ss >> att; ii++)
         {
           if (att != "none") {
@@ -393,7 +393,7 @@ int main(int argc, char* argv[])
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
     // 2) sync path to local filesystem
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    std::stringstream l_ss( Disks::ebsvolume_list("local", conf.VolumeFilePath) );
+    std::stringstream l_ss( Volumes::ebsvolume_list("local", conf.VolumeFilePath) );
 
     for (int ii = 0; l_ss >> mp; ii++){
       logger.log("debug", hostname, "EBSSyncer", transactionId, "CMD:[/home/cde/saad/code/DiskManager/bin/local-push.sh " + path + " " + mp + " " + source + "]", "push_task");
@@ -419,7 +419,7 @@ int main(int argc, char* argv[])
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
     // 3) sync path to remote filesystem
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    std::stringstream g_ss( Disks::ebsvolume_list("remote", conf.VolumeFilePath) );
+    std::stringstream g_ss( Volumes::ebsvolume_list("remote", conf.VolumeFilePath) );
     
     for (int ii = 0; g_ss >> att; ii++){
       logger.log("debug", hostname, "EBSSyncer", transactionId, "CMD:[/home/cde/saad/code/DiskManager/bin/remote-push.sh " + path + " " + att + "]", "push_task");
@@ -584,7 +584,7 @@ int main(int argc, char* argv[])
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
     // 3) sync path to local filesystem
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    std::stringstream l_ss( Disks::ebsvolume_list("local", conf.VolumeFilePath) );
+    std::stringstream l_ss( Volumes::ebsvolume_list("local", conf.VolumeFilePath) );
     if (is_file(fullPath.c_str())) {
       for (int ii = 0; l_ss >> mp; ii++)
       {
@@ -660,7 +660,7 @@ int main(int argc, char* argv[])
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
     // 3) sync path to remote filesystem
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
-    std::stringstream r_ss( Disks::ebsvolume_list("remote", conf.VolumeFilePath) );
+    std::stringstream r_ss( Volumes::ebsvolume_list("remote", conf.VolumeFilePath) );
     if (is_file(fullPath.c_str())) {
       for (int ii = 0; r_ss >> att; ii++)
       {

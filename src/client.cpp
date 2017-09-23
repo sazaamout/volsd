@@ -7,7 +7,7 @@
 
 #include "ClientSocket.h"
 #include "SocketException.h"
-#include "Disks.h"
+#include "Volumes.h"
 #include "Utils.h"
 #include "Logger.h"
 
@@ -156,7 +156,7 @@ int main ( int argc, char* argv[] )
         
     // TODO: fix this. passing the path here does not have effect since we are going to use a function that does not need that path
     // that fynction take v startuct 
-    Disks dc(true, "asdfasdf", "asdfasdf");
+    Volumes dc(true, "asdfasdf", "asdfasdf");
         
     int transaction = utility::get_transaction_id();
         
@@ -201,7 +201,7 @@ int main ( int argc, char* argv[] )
     Logger logger(true, "/var/log/messages", 3);
     
     std::string reply;
-    Disks dc(true);
+    Volumes dc(true);
     try {
       logger.log("info", "Unknown", "EBSCLient", 0, "connecting to port:[" + reply + "]", "Disk_release");
       ClientSocket client_socket ( "10.2.1.30", 9000 );
@@ -231,7 +231,7 @@ int main ( int argc, char* argv[] )
   void disk_push(std::string mountPoint){
     std::cout <<"Disk_PUSH\n";
     std::string reply;
-    Disks dc(true);
+    Volumes dc(true);
     
     try {
       std::cout << "Connecting to Port " << reply << "\n";

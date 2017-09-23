@@ -48,9 +48,9 @@ configure_file (
 
 set(CMAKE_CXX_FLAGS "-Wall -std=c++0x -pthread")
  
-set(DISPATCHER src/dispatcher.cpp src/Utils.cpp src/Logger.cpp src/Disks.cpp src/ServerSocket.cpp src/Socket.cpp)
-set(SYNC       src/sync.cpp       src/Utils.cpp src/Logger.cpp src/Disks.cpp src/ServerSocket.cpp src/Socket.cpp)
-set(CLIENT     src/client.cpp     src/Utils.cpp src/Logger.cpp src/Disks.cpp src/ClientSocket.cpp src/Socket.cpp)
+set(DISPATCHER src/dispatcher.cpp src/Utils.cpp src/Logger.cpp src/Volumes.cpp src/ServerSocket.cpp src/Socket.cpp)
+set(SYNC       src/sync.cpp       src/Utils.cpp src/Logger.cpp src/Volumes.cpp src/ServerSocket.cpp src/Socket.cpp)
+set(CLIENT     src/client.cpp     src/Utils.cpp src/Logger.cpp src/Volumes.cpp src/ClientSocket.cpp src/Socket.cpp)
 
 # create the executables
 add_executable(dispatcher ${DISPATCHER})
