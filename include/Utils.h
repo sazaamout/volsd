@@ -15,7 +15,7 @@
 #include <math.h>       /* floor */
 #include <iomanip>      // std::setfill, std::setw
 #include <vector>
-#include <sys/stat.h> // used for is_file and is_dir
+#include <sys/stat.h> // used for is_file and is_dir, and for creating a dir
 
 namespace utility
 {
@@ -49,12 +49,12 @@ namespace utility
 		std::string VolumeFilePath;
 		int MaxIdleDisk;
 		std::string ManagerLogFile;
-		std::string ControllerLogFile;
+		std::string DispatcherLogPrefix;
 		std::string ClientLogFile;
 		std::string SyncerLogFile;
 		int MasterLoglevel;
 		int ManagerLoglevel;
-		int ControllerLoglevel;
+		int DispatcherLoglevel;
 		int ClientLoglevel;
 		int Syncerloglevel;
 		
@@ -77,9 +77,8 @@ namespace utility
 
 	};
 	
+
 	void clean_string(std::string& str);
-	//std::string get_date();
-	//std::string get_time();
 	std::string get_dateTime();
 	std::string get_dateTime(int year, int month, int day, int hour, int min, int sec);
 	std::string substract_dateTime(int min);
@@ -88,8 +87,6 @@ namespace utility
 	int to_int(std::string str);
 	int exec(std::string& results, std::string cmd);
 	int exec1(std::string& results, std::string cmd);
-	//void logger(std::string logType, std::string hostname, std::string msg, std::string program, int transId, std::string clientIp);
-	//void logger(std::string logType, std::string hostname, std::string program, int transId, std::string msg );
 	std::string get_instance_id();
 	std::string randomString();
 	std::string get_device();
@@ -103,16 +100,21 @@ namespace utility
 	std::string datetime();
 	int datetime_diff( std::string time1, std::string time2 );
 	int is_root();
+
+	bool create_file(std::string path);
 	bool is_file(const char* path);
-	bool is_dir(const char* path);
 	bool is_exist(std::string path);
 	bool is_exist(std::string path, std::string ip);
+
+	bool is_dir(const char* path);
+	bool folder_exist(std::string prefix);
+    bool folders_create(std::string prefix, std::size_t pos = 1);
+    bool folder_create(std::string path);
+
 	int send_email(std::string title, std::string message, std::string to);
-	
-	
 	std::string rsync_errorCodetoString(int errorCode);
-	
 	std::string get_hostname();
+
 
 }
 

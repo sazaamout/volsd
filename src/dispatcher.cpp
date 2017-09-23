@@ -36,10 +36,11 @@
   // thread related functions
   void disk_request_task(int portNo, std::string request, std::string ip, Disks& d, int transId);
   void disk_release_task(Disks &diskcontroller, std::string volId, int transId);
+  void volume_manager_task(Disks& d);
   void debug_task(int portNo, Disks& d);
 
-  void EBSVolumeManager_task();
-  void EBSVolumeSync_task();
+  //void EBSVolumeManager_task();
+  //void EBSVolumeSync_task();
 
   void populate_port_array();
   std::string get_ports();
@@ -65,32 +66,33 @@ int main ( int argc, char* argv[] )
 
   // user must be root
   if (!utility::is_root()){
-    std::cout << "program must be ran as root\n";
+    std::cout << "error: program must be ran as root\n";
     return 1;
   }
 
-  // This function will overwite the _conffile varibles if user specified one, 
-  // otherwise, it will use the default.
+  // Default value is DISPATCHER_CONF_FILE, if use want to sepcify different one
+  // he must pass the -c flage when executig the program. 
+  // Ex: dispatcher -c /path/to/conf/file
   _conffile = DISPATCHER_CONF_FILE;
   get_arguments( argc, argv );
         
-                                 
-  std::cout << "program starts...\n";
-  return 1;
-
-  //if (!parse_arguments(argc, argv)){
-  //  return 1;
-  //}
-	
+                                
   // -------------------------------------------------------------------
   // Initializations	
   // -------------------------------------------------------------------
   // 1. Load the configurations from conf file
-  utility::load_configuration(conf, _conffile);
-  _loglevel = conf.ControllerLoglevel;
+  if ( !utility::load_configuration(conf, _conffile) ){
+    std::cout << "error: cannot locate configuration file\n";
+    return 1;
+  }
+  _loglevel = conf.DispatcherLoglevel;
   
   // 2. prepare the Logger
-  Logger logger(_onscreen, conf.ControllerLogFile, _loglevel);
+  // ensure that the prefix exit. If user specified /dir1/dir2/dir3 as prefix and
+  // dir2 and dir3 does not exit, then go and create it.
+  utility::folders_create( conf.DispatcherLogPrefix );
+  
+  Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
   Disks diskcontroller(true, conf.TempMountPoint, conf.VolumeFilePath);
 
   // 3. get the hostname and the Amazon Instance Id for this machine
@@ -103,10 +105,17 @@ int main ( int argc, char* argv[] )
   populate_port_array();
 
   // 5. start the admin thread
-  logger.log("info", hostname, "Dispatcher", 0, "starting the debug thread");
-  thread debug_thread(debug_task, 8000, std::ref(diskcontroller));
-  debug_thread.detach();
+  //thread debug_thread(debug_task, 8000, std::ref(diskcontroller));
+  //debug_thread.detach();
   
+  // 5. start the volume manager thread
+  thread manager_thread(volume_manager_task, std::ref(diskcontroller));
+  manager_thread.detach();
+
+
+  logger.log("info", hostname, "Dispatcher", 0, "dispatcher programs started");
+  utility::print_configuration(conf);
+  return 1;
 
   // -------------------------------------------------------------------
   // Core Functionality
@@ -158,7 +167,7 @@ int main ( int argc, char* argv[] )
             
             // DiskRelease request format: "DiskRelease:volId"
             logger.log("info", hostname, "Dispatcher", transId, "request:[" + request + "] from client:[" + cip + "]");
-	    std::string volId = request.substr( request.find(":")+1, request.find("\n") );	
+	        std::string volId = request.substr( request.find(":")+1, request.find("\n") );	
 					
 	    if ( (volId == "") || (volId == " ") ) {
               logger.log("error", hostname, "Dispatcher", transId, "client did not supply volume id to release");
@@ -210,8 +219,9 @@ int main ( int argc, char* argv[] )
   // DISK_REQUEST_TASK
   // -------------------------------------------------------------------
   void disk_request_task(int portNo, std::string request, std::string ip, Disks& dc, int transId) {
-
-    Logger logger(_onscreen, conf.ControllerLogFile, _loglevel);
+	
+    Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
+    
     logger.log("debug", hostname, "Dispatcher", transId, 
                "awaiting clinet to connect tp port:[" + utility::to_string(portNo) + "]", "DiskRequestThread"
     );
@@ -297,7 +307,18 @@ int main ( int argc, char* argv[] )
     portsArray[portNo-9000-1].status=false;
 		
     //logger.flush();
-}
+  }
+
+  // -------------------------------------------------------------------
+  // Volume Manager task
+  // -------------------------------------------------------------------
+  void volume_manager_task(Disks& d){
+
+	Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
+	
+    logger.log( "debug", hostname, "Manager", 0, "manager thread started" );
+
+  }
 
 
   // -------------------------------------------------------------------
@@ -367,7 +388,7 @@ int main ( int argc, char* argv[] )
   // -------------------------------------------------------------------
   void disk_release_task(Disks &dc, std::string volId, int transId) {
 		
-    Logger logger(_onscreen, conf.ControllerLogFile, _loglevel);
+    Logger logger(_onscreen, conf.DispatcherLogPrefix, _loglevel);
 		
     utility::Volume v;
     v.id = volId;
@@ -460,7 +481,7 @@ int main ( int argc, char* argv[] )
   // -------------------------------------------------------------------
   void debug_task(int portNo, Disks& dc) {
 	  
-    Logger logger(_onscreen, conf.ControllerLogFile, _loglevel);
+    Logger logger(_onscreen, conf.DispatcherLogPrefix, _loglevel);
 		  
     std::string request, ack, reply;
     ServerSocket debugThread ( portNo );

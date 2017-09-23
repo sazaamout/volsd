@@ -64,7 +64,8 @@ int main(int argc, char* argv[])
     return 1;
   }
   
-  _loglevel = conf.ControllerLoglevel;
+  // this is wrong, why am i using the Dispatcher log level?
+  _loglevel = conf.DispatcherLoglevel;
   Logger logger(_onscreen, conf.SyncerLogFile, _loglevel);
 
   // get this instance id

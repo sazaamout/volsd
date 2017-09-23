@@ -49,23 +49,20 @@ configure_file (
 set(CMAKE_CXX_FLAGS "-Wall -std=c++0x -pthread")
  
 set(DISPATCHER src/dispatcher.cpp src/Utils.cpp src/Logger.cpp src/Disks.cpp src/ServerSocket.cpp src/Socket.cpp)
-set(MANAGER    src/manager.cpp    src/Utils.cpp src/Logger.cpp src/Disks.cpp src/Snapshots.cpp)
 set(SYNC       src/sync.cpp       src/Utils.cpp src/Logger.cpp src/Disks.cpp src/ServerSocket.cpp src/Socket.cpp)
 set(CLIENT     src/client.cpp     src/Utils.cpp src/Logger.cpp src/Disks.cpp src/ClientSocket.cpp src/Socket.cpp)
 
 # create the executables
 add_executable(dispatcher ${DISPATCHER})
-add_executable(manager    ${MANAGER})
 add_executable(sync       ${SYNC})
 add_executable(client     ${CLIENT})
 
 # installations
 #set(EXE_INSTALLATION_DIR ${CMAKE_BINARY_DIR}/install)
-install(TARGETS dispatcher      DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
-install(TARGETS manager         DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
-install(TARGETS sync            DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
-install(TARGETS client          DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
-install(FILES   conf/config     DESTINATION ${CFG_INSTALL_DIR} COMPONENT config  )
+install(TARGETS dispatcher              DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
+install(TARGETS sync                    DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
+install(TARGETS client                  DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
+install(FILES   conf/dispatcher.cfg     DESTINATION ${CFG_INSTALL_DIR} COMPONENT config  )
 
 message("--------------------------------------------------")
 message("Binaries will be placed in ${EXE_INSTALL_DIR}")
