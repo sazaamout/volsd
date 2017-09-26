@@ -32,11 +32,10 @@ namespace utility
 		bool status;
 	};
 
-    //struct ReturnValue {
-    //  std::string data;
-    //  std::string error;
-    //  std::vector<std::string> debug;
-    //};
+    struct ReturnValue {
+      std::string data;
+      std::string errorMsg;
+    };
     
     struct Configuration {
 		std::string Hostname;
@@ -80,6 +79,7 @@ namespace utility
 
 	void clean_string(std::string& str);
 	std::string get_dateTime();
+  std::string unixTime ();
 	std::string get_dateTime(int year, int month, int day, int hour, int min, int sec);
 	std::string substract_dateTime(int min);
 	int get_transaction_id();
@@ -101,11 +101,12 @@ namespace utility
 	int datetime_diff( std::string time1, std::string time2 );
 	int is_root();
 
-	bool create_file(std::string path);
+	bool file_create(std::string path);
 	bool is_file(const char* path);
 	bool is_exist(std::string path);
 	bool is_exist(std::string path, std::string ip);
-
+  bool is_empty(std::string path);
+  
 	bool is_dir(const char* path);
 	bool folder_exist(std::string prefix);
     bool folders_create(std::string prefix, std::size_t pos = 1);

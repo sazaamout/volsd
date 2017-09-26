@@ -1,0 +1,14 @@
+1. Rename the Disks Class to Volume and investigate whether you need it to be a class or namespace (Done. Made it as class)
+2. Merge the Dispatcher with the manager
+2. Add 'release' and 'quire' functions
+3. Modify Logger class to accept localhost_name, program_name in the constructor to avoid typing these everytime
+4. Put the parse_args function in utilities
+5. redo the configuration load to a better way to avoid writing it more than one time
+6. Removing the syncing from inside the sync.cpp file and put it in a separate file
+7. Move the syncing funtionality to Disks(Volumes Class)
+8. I fixed the disatcher pars_args function, do this for client, manager, synchroziner
+9. use dynamic array to avoid segment fault in manager, disk, dispatcher
+10. When installing the machine on a new machine, make sure that the installer creates the direcotryes for TempMountPoint VolumeFilePath SnapshotFile *LogFile. All of these varibles etcist on the erc/config file.
+11. make sure that the client progra adds an entry in the /etc/fstab for the mounted disk
+12. Create a sync class so it can be used by dispatcher and synchroziner and Volumes class
+13. have snapshots class to use unix time rather than actual time. Also, store data in unix time

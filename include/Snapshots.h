@@ -21,8 +21,7 @@ class Snapshots {
 		
 		struct Snapshot{
 			std::string id;
-			std::string date;
-			std::string time;
+			std::string timestamp;
 			std::string status;
 			std::string is_latest;
 		};
@@ -42,7 +41,9 @@ class Snapshots {
 		int create_snapshot(std::string TargetFilesystem, int freq, Logger& logger);
 		void print_snapshots(Logger& logger);
 		
-		std::string get_latest(std::string select, Logger& logger);
+		//std::string get_latest(std::string select, Logger& logger);
+    int latest(std::string &snapshotId,Logger& logger);
+    int latest_date(std::string &date, Logger& logger);
 };
 
 #endif

@@ -348,6 +348,7 @@ namespace utility
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // DATETIME FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+  // not used
   std::string datetime (){
     time_t now_t = time(0);
     struct tm *now_tm = localtime( &now_t );
@@ -358,11 +359,20 @@ namespace utility
     return std::string(buffer);
   }
 
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Unix Time FUNCTION
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+  std::string unixTime (){
+    std::time_t result = std::time(nullptr);
+    return to_string(result);
+  }
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // DATETIME_DIFF FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // not used
   int datetime_diff ( std::string time1, std::string time2 ) {
+	  
     struct tm tm1, tm2; 
     time_t t1, t2; 
 
@@ -385,6 +395,12 @@ namespace utility
   // IS_ROOT FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   int is_root(){
+    //TODO: 
+    // there is a better way to do this
+    // #include <unistd.h>
+	// uid_t getuid(void);
+	// https://stackoverflow.com/questions/4159910/check-if-user-is-root-in-c
+	
     // check if running as root
     std::string output;
     utility::exec(output, "whoami");
@@ -456,13 +472,6 @@ namespace utility
       return 0;
   }
 
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // IS_EXIST FUNCTION
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  //bool folder_exist(std::string prefix) {
-  //  struct stat buffer;   
-  //  return (stat (prefix.c_str(), &buffer) == 0); 
-  //}
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Folders Exist FUNCTION
@@ -491,6 +500,8 @@ namespace utility
  
       found = prefix.find('/', found+1);
     }
+    
+    return true;
   }
 
 
@@ -498,14 +509,52 @@ namespace utility
   // Folder Create FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   bool folder_create(std::string path) {
-	const int dir_err = mkdir(path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-	if (-1 == dir_err) {
-		printf("Error creating directory!n");
-		return false;
-	}
+    const int dir_err = mkdir(path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    if (-1 == dir_err) {
+      printf("error creating directory: %s\n", path.c_str());
+      return false;
+    }
     return true;
   }
 
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // File Create FUNCTION
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  bool file_create(std::string path){
+    if (path == "")
+      return false;
+      
+    
+    std::size_t pos = path.rfind('/');
+    std::string file = path.substr(path.rfind('/')+1);
+    std::string prefix   = path.substr(0, pos);
+    
+    // ensure that parent dir is created
+    folders_create(prefix, 1);
+    
+    // create the file
+    std::string output;
+    int res = utility::exec(output, "touch " + path);
+    
+    if (res)
+      return 1;
+    else
+      return 0;
+      
+    return 1;
+  }
+  
+  
+  bool is_empty(std::string path){
+    std::fstream myFile;
+    myFile.open(path.c_str());
+    
+    if ( myFile.peek() == std::ifstream::traits_type::eof() )
+      return true;
+    
+    return false;  
+  }
+  
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // GET_HOSTNAME FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

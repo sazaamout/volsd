@@ -57,6 +57,7 @@ void Logger::log(std::string loglevel, std::string hostname, std::string program
     }
   }
   
+  std::cout.flush();
   myfile.close();
   myfile.clear();
 }
