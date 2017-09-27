@@ -50,7 +50,7 @@ Volumes::Volumes () {
  * Class Destractor
  * =============================================================================*/
 Volumes::~Volumes() { 
-
+  delete[] vols;
 }
 
 

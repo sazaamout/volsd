@@ -39,3 +39,4 @@
 
 21. start a cleaner thread that check if volumes are correct
 22. TODO: ensure that the aws command is there
+23. currenlty, Volumes class reads from diskinfo file direcoty, make it read from an array

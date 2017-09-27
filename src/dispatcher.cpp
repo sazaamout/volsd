@@ -114,28 +114,28 @@ int main ( int argc, char* argv[] )
   snapshots  = Snapshots(conf.SnapshotMaxNumber, conf.SnapshotFile, conf.SnapshotFrequency);
   volumes = Volumes(true, conf.TempMountPoint, conf.VolumeFilePath, conf.MaxIdleDisk);
 
-  // ensure that volumes are mounted
+  // 4. ensure that volumes are mounted
   if ( !ensure_mounted(logger) ){
     std::cout << "error: target filesystem " << conf.TargetFilesystemMountPoint << " is not mounted\n";
     return 0;
   }
  
-  // 4. get the hostname and the Amazon Instance Id for this machine
+  // 5. get the hostname and the Amazon Instance Id for this machine
   hostname    = utility::get_hostname();
   instance_id = utility::get_instance_id();
 
-  // 5. Populating ports array. These ports are there to be able to communicate
+  // 6. Populating ports array. These ports are there to be able to communicate
   // with multiple clients at once
   portsArray = new Port[10];
   populate_port_array();
 
   
-  // 6. start the volume manager thread
+  // 7. start the volume manager thread
   logger.log("info", hostname, "Dispatcher", 0, "starting the volumes manager...");
   thread manager_thread(volume_manager_task, std::ref(volumes));
   manager_thread.detach();
 
-  // 7. start a thread to create a snapshot every 4 hours
+  // 8. start a thread to create a snapshot every 4 hours
   logger.log("info", hostname, "Dispatcher", 0, "starting the snapshot manager...");
   std::thread snapshotManager_thread(createSnapshot_task, std::ref(snapshots), conf.SnapshotMaxNumber, conf.SnapshotFile, conf.SnapshotFrequency);
   snapshotManager_thread.detach();
