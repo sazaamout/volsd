@@ -56,7 +56,7 @@
 
   int disk_prepare(utility::Volume& volume, Volumes& dc, int transactionId, Logger& logger);
   void get_arguments( int argc, char **argv );
-  //int parse_arguments(int argc, char* argv[]);
+  int ensure_mounted(Logger &logger);
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  MAIN PROGRAM
@@ -88,6 +88,7 @@ int main ( int argc, char* argv[] )
   // -------------------------------------------------------------------
   // 1. Load the configurations from conf file
   if ( !utility::load_configuration(conf, _conffile) ){
+    // TODO: ensure that conf file is correct
     std::cout << "error: cannot locate configuration file\n";
     return 1;
   }
@@ -106,16 +107,19 @@ int main ( int argc, char* argv[] )
     return 1;
   }
     
-  // TODO: mount/ensure the target file system 
-  // TODO: start a cleaner thread that check if volumes are correct
-  
   // 3. Object Instantiation  
   _loglevel = conf.DispatcherLoglevel;
   Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
   
-  volumes = Volumes(true, conf.TempMountPoint, conf.VolumeFilePath, conf.MaxIdleDisk);
   snapshots  = Snapshots(conf.SnapshotMaxNumber, conf.SnapshotFile, conf.SnapshotFrequency);
-  
+  volumes = Volumes(true, conf.TempMountPoint, conf.VolumeFilePath, conf.MaxIdleDisk);
+
+  // ensure that volumes are mounted
+  if ( !ensure_mounted(logger) ){
+    std::cout << "error: target filesystem " << conf.TargetFilesystemMountPoint << " is not mounted\n";
+    return 0;
+  }
+ 
   // 4. get the hostname and the Amazon Instance Id for this machine
   hostname    = utility::get_hostname();
   instance_id = utility::get_instance_id();
@@ -125,9 +129,6 @@ int main ( int argc, char* argv[] )
   portsArray = new Port[10];
   populate_port_array();
 
-  // 5. start the admin thread
-  //thread debug_thread(debug_task, 8000, std::ref(volumes));
-  //debug_thread.detach();
   
   // 6. start the volume manager thread
   logger.log("info", hostname, "Dispatcher", 0, "starting the volumes manager...");
@@ -337,7 +338,6 @@ int main ( int argc, char* argv[] )
     while (true) {
 	  // create disks if needed
       value = volumes.ebsvolume_idle_number() + inProgressVolumes;
-      logger.log( "debug", hostname, "Manager", 0, "value is " + utility::to_string(value) );	
       if ( value < conf.MaxIdleDisk ){
         logger.log( "debug", hostname, "Manager", 0, "creating a new volume" );	
         std::thread creatDisk_thread(createDisk_task, std::ref(snapshots), std::ref(volumes) );
@@ -366,8 +366,8 @@ int main ( int argc, char* argv[] )
     
     std::string snapshotId;
     if (!snapshot.latest(snapshotId, logger)){
-		logger.log("info", hostname, "Manager", transaction, "No snapshot was found.");
-	}
+		  logger.log("info", hostname, "Manager", transaction, "No snapshot was found.");
+	  }
 		
   
     // set this varabile so that main wont create another thread to create new disk
@@ -442,44 +442,48 @@ int main ( int argc, char* argv[] )
      * 4) mount Volume
      * ---------------------------------------------------------------*/ 
     logger.log("info", hostname, "Manager", transaction, "mounting volume into localhost", "CreateDisk");
-    if (!dc.ebsvolume_mount(v, instance_id, transaction, logger)){
+    int retry=0;
+    bool mounted = false;
+    while (!mounted) {
+      
+      if ( (!dc.mount(v, transaction, logger)) ){
+        logger.log("info", hostname, "Manager", transaction, "FAILED to mount new disk to localhost. retry", "CreateDisk");
+        v.mountPoint = conf.TempMountPoint + utility::randomString();
+      } else {
+        logger.log("info", hostname, "Manager", transaction, "new volumes was mounted successfully", "CreateDisk");
+        mounted = true;
+      }
+      
+      if (retry == 5) {
+        //logger("error", hostname, "EBSManager::thread", transaction, "failed to mount new disk to localhost. Detaching...");
+        logger.log("error", hostname, "Manager", transaction, "FAILED to mount new disk to localhost. Detaching...", "CreateDisk");
+        if (!dc.ebsvolume_detach(v, transaction, logger))
+          logger.log("error", hostname, "Manager", transaction, "FAILED to detach.", "CreateDisk");
     
-      //logger("error", hostname, "EBSManager::thread", transaction, "failed to mount new disk to localhost. Detaching...");
-      logger.log("error", hostname, "Manager", transaction, "FAILED to mount new disk to localhost. Detaching...", "CreateDisk");
-      if (!dc.ebsvolume_detach(v, transaction, logger))
-        logger.log("error", hostname, "Manager", transaction, "FAILED to detach.", "CreateDisk");
+          //logger("info", hostname, "EBSManager::thread", transaction, "removing device");
+          logger.log("info", hostname, "Manager", transaction, "removing device", "CreateDisk");
+          utility::remove_element(devices_list, v.device);
     
-      //logger("info", hostname, "EBSManager::thread", transaction, "removing device");
-      logger.log("info", hostname, "Manager", transaction, "removing device", "CreateDisk");
-      utility::remove_element(devices_list, v.device);
-    
-      //logger("info", hostname, "EBSManager::thread", transaction, "removing disk from file");
-      logger.log("info", hostname, "Manager", transaction, "removing disk from file", "CreateDisk");
-      m.lock();
-      dc.ebsvolume_setstatus( "delete", v.id, v.status, v.attachedTo, v.mountPoint, v.device, transaction, logger);
-      m.unlock();
-      inProgressVolumes--;
-      return;
+          //logger("info", hostname, "EBSManager::thread", transaction, "removing disk from file");
+          logger.log("info", hostname, "Manager", transaction, "removing disk from file", "CreateDisk");
+          m.lock();
+          dc.ebsvolume_setstatus( "delete", v.id, v.status, v.attachedTo, v.mountPoint, v.device, transaction, logger);
+          m.unlock();
+          inProgressVolumes--;
+          return;
+      }
+      
+      retry++;
     }
-    logger.log("info", hostname, "Manager", transaction, "volume was mounted successfully into localhost", "CreateDisk");
-  
-  
+      
     /* -----------------------------------------------------------------   
      * 5) Sync Volume
      * ---------------------------------------------------------------*/ 
     // sync it with the TargetFilesystemMountPoint
-    // get all of the paths from conf.SyncRequestsFile, sync the volume 
     logger.log("info", hostname, "Manager", transaction, "syncing new volume", "CreateDisk");
     std::fstream myFile;
     std::string output, line, pathDate;
   
-    // open a socket send a sync request
-  
-    // wait for resutls
-  
-  
-    //if (!dc.ebsvolume_sync(v.mountPoint, conf.TargetFilesystemMountPoint, transaction, logger))
-    //  logger.log("info", hostname, "EBSManager", transaction, "syncing new volume failed", "CreateDisk");
     logger.log("debug", hostname, "Manager", transaction, "EXECMD:[echo 'sync " + v.mountPoint + " ' > /dev/tcp/infra1/" + utility::to_string( conf.SyncerServicePort ), "CreateDisk");
     int res = utility::exec(output, "echo 'sync " + v.mountPoint + "' > /dev/tcp/infra1/" + utility::to_string( conf.SyncerServicePort ) );
   
@@ -493,7 +497,6 @@ int main ( int argc, char* argv[] )
     dc.ebsvolume_setstatus( "update", v.id, v.status, v.attachedTo, v.mountPoint, v.device, transaction, logger);
     m.unlock();
   
-    //dc.ebsvolume_print();
   
     inProgressVolumes--;
 
@@ -652,10 +655,8 @@ int main ( int argc, char* argv[] )
       );
       return;
     }
-  
-  logger.log("info", hostname, "Dispatcher", transId, "volume:[" + v.id + "] was deleted", "DiskReleaseThread");
-    
-}
+    logger.log("info", hostname, "Dispatcher", transId, "volume:[" + v.id + "] was deleted", "DiskReleaseThread");
+  }
 
 
   // -------------------------------------------------------------------
@@ -712,112 +713,6 @@ int main ( int argc, char* argv[] )
     return str;
   }
 
-
-  // -------------------------------------------------------------------
-  // DEBUG_TASK
-  // -------------------------------------------------------------------
-  void debug_task(int portNo, Volumes& dc) {
-	  
-    Logger logger(_onscreen, conf.DispatcherLogPrefix, _loglevel);
-		  
-    std::string request, ack, reply;
-    ServerSocket debugThread ( portNo );
-
-    while ( true ) {
-      ServerSocket new_sock;
-      // here, make a new threads. Every new clinet needs a threds. 
-      debugThread.accept ( new_sock );
-	  
-      try {
-        while ( true ) {
-          try {
-            new_sock  >> request;
-            utility::clean_string(request);
-		
-            logger.log("info", hostname, "Dispatcher", 0, "Request recived [" + request + "]", "Debug");
-				
-            if ( request.compare("portlist") == 0 ) {
-              //std::cout << "  DEBUG: portlist request Recived" << std::endl;
-              reply = get_ports();
-              new_sock << reply;
-				
-            }else if ( ( request.compare("help") == 0 ) || ( request.compare("h") == 0 ) ) {
-              //std::cout << "  DEBUG help request Recived" << std::endl;
-              reply = "Commands List:\nvollist\nvolsetid\nportlist\ebssync\nebspush\nexit\n";
-              new_sock << reply;
-              //new_sock.close_socket();
-              //break;				
-            }else if ( request.compare("vollist") == 0 ) {
-              // TODO
-              reply = dc.ebsvolume_list("all", conf.VolumeFilePath);
-              new_sock << reply;
-				
-              //new_sock.close_socket();
-              //break;	
-            } else if ( request.find("snapshot_create") != std::string::npos ) {
-              // TODO
-              // this will create a snapshot from the target point and set it to latest. 
-		
-              std::string volId = request.substr( request.find(" ")+1, request.find("\n") );
-              //new_sock.close_socket();
-              //break;
-            } else if ( request.compare("volsetidle") == 0 ) {
-              std::cout << "debug" << std::endl;
-              reply = "volume ID:"; 
-              new_sock << reply;
-			  
-              new_sock >> reply;
-              utility::clean_string(reply);
-								
-              dc.ebsvolume_setstatus("update", reply, "idle", "none", "none", "none", 0, logger);
-              reply = "Volume [" + reply + "] status was chagned\n";
-              new_sock << reply;
-              //new_sock.close_socket();
-              //break;	 
-              
-            } else if (( request.compare("exit") == 0 ) || ( request.compare("quit") == 0 )) {
-              //std::cout << "  DEBUG Client request to Exit\n\n";
-              new_sock.close_socket();
-              break;
-
-            } else if ( request.compare("listRemoteServers") == 0 ) {
-              reply = "";
-              std::string remote = dc.ebsvolume_list("all", conf.VolumeFilePath);
-				
-              std::istringstream iss(remote);
-
-              for (std::string line; std::getline(iss, line); ) {
-                if (line.find("used") != std::string::npos ){
-                  std::stringstream ss(line);
-                  std::string a,b,c;
-                  ss >> a >> b >> c;
-                  reply += c + "\n";
-                }
-              }
-              new_sock << reply;
-              //new_sock.close_socket();
-              //break;	 
-
-            }else {
-              reply = "unknown request, type help for list of commands\n\n";
-              new_sock << reply;
-              //break;
-            } 
-          } catch ( SocketException& e) {
-            ack = "FAILED";
-            //std::cout << "  DEBUG: Connection Closed: " << e.description() << "\n\n";
-            logger.log("error", hostname, "Dispatcher", 0, "nkown error, connection Closed", "Debug");
-            new_sock.close_socket();
-            break;
-          } // ~~~ end of inner try
-        }
-      } catch ( SocketException& e) {
-      }
-    } // ~~~ end of outer while
-  } // ~~~ end of function
-
-	
-
   // -------------------------------------------------------------------
   // Get_Arguments 
   // -------------------------------------------------------------------
@@ -869,4 +764,24 @@ int main ( int argc, char* argv[] )
       fprintf (stderr, "use -h for help.\n");
       exit(1);
     }
+  }
+  
+  
+  int ensure_mounted(Logger &logger){
+    
+    std::string output;
+    // first, check if targetFilesystem is mounted
+    if ( !utility::is_mounted( conf.TargetFilesystemMountPoint ) ){
+      logger.log("info", "infra1", "Volumes", 0, "Target filesystem " +  conf.TargetFilesystemMountPoint + " was not mounted. >> mounting ...");
+      if ( !utility::mountfs(output, conf.TargetFilesystemMountPoint, conf.TargetFilesystemDevice) ) {
+        logger.log("info", "infra1", "Volumes", 0, "cannot mount target filesystem. " + output);
+        return 0;
+      }
+    }  
+    
+    // then, check if previously created volumes are mounted
+    logger.log("info", hostname, "Dispatcher", 0, "ensure that all volumes are mounted");
+    volumes.remount(logger);
+    
+    return 1;
   }

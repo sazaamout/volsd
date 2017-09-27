@@ -239,12 +239,15 @@ namespace utility
       if ( (line[0] == '#') || (line[1] == '#') || (line[0] == '\n')){
         continue;
       }
-      if (line.find("MaxIdleDisk") != std::string::npos){
+      
+      if (line.find("MaxIdleDisk") != std::string::npos)
         conf.MaxIdleDisk = utility::to_int(line.substr(line.find(" ")+1));
-      } else if (line.find("TargetFilesystem ") != std::string::npos)
+      else if (line.find("TargetFilesystem ") != std::string::npos)
         conf.TargetFilesystem = line.substr(line.find(" ")+1);
       else if (line.find("TargetFilesystemMountPoint") != std::string::npos)
         conf.TargetFilesystemMountPoint = line.substr(line.find(" ")+1);
+      else if (line.find("TargetFilesystemDevice") != std::string::npos)
+        conf.TargetFilesystemDevice = line.substr(line.find(" ")+1);
       else if (line.find("TempMountPoint") != std::string::npos)
         conf.TempMountPoint = line.substr(line.find(" ")+1);
       else if (line.find("SnapshotFrequency") != std::string::npos)
@@ -265,7 +268,6 @@ namespace utility
         conf.ClientLogFile = line.substr(line.find(" ")+1);
       else if (line.find("SyncerLogFile") != std::string::npos)
         conf.SyncerLogFile = line.substr(line.find(" ")+1);
-      
       else if (line.find("Syncerloglevel") != std::string::npos)
         conf.Syncerloglevel = utility::to_int(line.substr(line.find(" ")+1));
       else if (line.find("Masterloglevel") != std::string::npos)
@@ -452,6 +454,7 @@ namespace utility
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // IS_EXIST FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // used tocheck if files/directories exist
   bool is_exist(std::string path) {
     struct stat buffer;   
     return (stat (path.c_str(), &buffer) == 0); 
@@ -518,6 +521,72 @@ namespace utility
   }
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Folder is Empty FUNCTION
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  bool folder_is_empty(const std::string dirname) {
+    
+    int n = 0;
+    struct dirent *d;
+    DIR *dir = opendir(dirname.c_str());
+    if (dir == NULL) //Not a directory or doesn't exist
+      return true;
+    while ((d = readdir(dir)) != NULL) {
+      if(++n > 2)
+        break;
+    }
+    closedir(dir);
+    if (n <= 2) //Directory Empty
+      return true;
+    else
+      return false;
+  }
+  
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // MOUNT FUNCTION
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  bool mountfs( std::string &output, std::string mountPoint, std::string device ){
+       
+    const char* src  = device.c_str();
+    const char* trgt = mountPoint.c_str();
+    const char* type = "ext4";
+    const unsigned long mntflags = 0;
+    const char* opts = "";   /* 65534 is the uid of nobody */
+
+    int result = mount(src, trgt, type, mntflags, opts);
+
+    if (result == 0) {
+      return true;
+    } else {
+      output = strerror(errno);
+      return false;
+    }
+
+    return true;
+  }
+  
+  
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // is mounted FUNCTION
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  bool is_mounted( const std::string dir){
+	  
+    FILE * mtab = NULL;
+    struct mntent * part = NULL;
+    int is_mounted = 0;
+    if ( ( mtab = setmntent ("/etc/mtab", "r") ) != NULL) {
+      while ( ( part = getmntent ( mtab) ) != NULL) {
+        if ( ( part->mnt_dir != NULL )  && ( strcmp ( part->mnt_dir, dir.c_str() ) ) == 0 ) {
+          is_mounted = 1;
+        }
+      }
+      endmntent ( mtab);
+    }
+
+    return is_mounted;
+  }
+  
+  
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // File Create FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   bool file_create(std::string path){
@@ -565,6 +634,11 @@ namespace utility
     return output;
   }
   
+  
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // RSYNC ERROR FUNCTION
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // not sure if this still used?
   std::string rsync_errorCodetoString(int errorCode) 
   {
     switch(errorCode){

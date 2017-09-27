@@ -46,11 +46,13 @@ class Volumes
     int ebsvolume_create(utility::Volume& volume, std::string& latestSnapshot, int transactionId, Logger& logger);
     int ebsvolume_attach(utility::Volume& volume, std::string& ec2InstanceId, int transactionId, Logger& logger);
     int ebsvolume_mount(utility::Volume& volume, std::string& ec2InstanceId, int transactionId, Logger& logger);
+    int mount(utility::Volume& volume, int transactionId, Logger& logger);
+    void remount(Logger &logger);
     int ebsvolume_umount(utility::Volume& volume, int transactionId, Logger& logger);
     int ebsvolume_detach(utility::Volume& volume, int transactionId, Logger& logger);
     int ebsvolume_delete(utility::Volume& volume, int transactionId, Logger& logger);
     //int ebsvolume_remove(utility::Volume& volume, int transactionId, Logger& logger);
-    void print();
+    void printxyz();
     // -----------------------------------
     // move these to sync class
     int ebsvolume_sync(std::stringstream& ss, std::string op, std::string path, std::string source, Logger& logger);
