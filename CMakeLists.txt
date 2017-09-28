@@ -46,7 +46,8 @@ configure_file (
   "${CMAKE_SOURCE_DIR}/include/Config.h"
   )
 
-set(CMAKE_CXX_FLAGS "-Wall -std=c++0x -pthread")
+#set(CMAKE_CXX_FLAGS "-Wall -std=c++0x -pthread")
+set(CMAKE_CXX_FLAGS "-std=c++0x -pthread")
  
 set(DISPATCHER src/dispatcher.cpp src/Utils.cpp src/Logger.cpp src/Volumes.cpp src/ServerSocket.cpp src/Socket.cpp src/Snapshots.cpp)
 set(SYNC       src/sync.cpp       src/Utils.cpp src/Logger.cpp src/Volumes.cpp src/ServerSocket.cpp src/Socket.cpp)

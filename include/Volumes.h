@@ -24,6 +24,7 @@ class Volumes
     std::string _volumeFile;
     utility::Volume *vols;
     int counter;
+    
     bool ebsvolume_dump_to_file(int transactionId);
   
     int attach(std::string volume, std::string device, std::string instance_id, bool d);

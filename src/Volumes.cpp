@@ -11,46 +11,38 @@ Volumes::Volumes (bool debug, std::string rmd, std::string volumeFile, int idleV
   // this variable will not be used anymoe.
   _max_wait_time = 60;
 
-  vols = new utility::Volume [100];
-
+  vols = new utility::Volume[100];
+  
   _debug = debug;
   _rootMountDirectory = rmd;
   _volumeFile = volumeFile;
   
   // Load Volumes information from file  
   load();
-  //printxyz();
+  
 }
 
 Volumes::Volumes (bool debug, std::string rmd, std::string volumeFile){
-  
-  // this variable will not be used anymoe.
-  _max_wait_time = 60;
-  _debug = debug;
-  _rootMountDirectory = rmd;
-  _volumeFile = volumeFile;
 }
 /* =============================================================================
  * Class Constructor
  * =============================================================================*/
 Volumes::Volumes (bool debug) {
-  //ebsvolume_load_from_file();
-  _max_wait_time = 60;
-  _debug = debug;
-  _rootMountDirectory = "/mnt/diskManager/";
 }
 
 /* =============================================================================
  * Class Constructor
  * =============================================================================*/
 Volumes::Volumes () {
+  
 }
 
 /* =============================================================================
  * Class Destractor
  * =============================================================================*/
-Volumes::~Volumes() { 
-  delete[] vols;
+Volumes::~Volumes() {
+  std::cout << "destructor is called\n"; 
+  //delete[] vols;
 }
 
 
@@ -500,37 +492,37 @@ bool Volumes::ebsvolume_setstatus(std::string op, std::string vol, std::string s
     logger.log("debug", "infra1", "Volumes", transactionId, "updating: volId:[" + vol + "], status:[" + status + "], attachedTo:[" + ip + "], mountpoint:[" + mp + "], device:[" + d + "]", "ebsvolume_setstatus");
     std::ifstream myFile;
     std::string line;
-    int counter = 0;
+    //int counter = 0;
 
-    utility::Volume *volumes = new utility::Volume[100];
+    //utility::Volume *volumes = new utility::Volume[100];
 
     // 1) load into array
-    myFile.open(_volumeFile.c_str());
-    if (!myFile.is_open()){
-      logger.log("error", "infra1", "Volumes", transactionId, "could not open disk file", "ebsvolume_setstatus");
-      return 0;
-    }
-    while (std::getline(myFile, line)) {
-      std::istringstream iss(line);
-      std::string volId, status, attachedTo, mountPoint, device;
-      iss >> volId >> status >> attachedTo >> mountPoint >> device;
-      volumes[counter].id = volId;
-      volumes[counter].status = status;
-      volumes[counter].attachedTo = attachedTo;
-      volumes[counter].mountPoint = mountPoint;
-      volumes[counter].device = device;
-      counter++;
-    }
-    myFile.close();
-    myFile.clear();
+    //myFile.open(_volumeFile.c_str());
+    //if (!myFile.is_open()){
+    //  logger.log("error", "infra1", "Volumes", transactionId, "could not open disk file", "ebsvolume_setstatus");
+    //  return 0;
+    //}
+    //while (std::getline(myFile, line)) {
+    //  std::istringstream iss(line);
+    //  std::string volId, status, attachedTo, mountPoint, device;
+    //  iss >> volId >> status >> attachedTo >> mountPoint >> device;
+    //  volumes[counter].id = volId;
+    //  volumes[counter].status = status;
+    //volumes[counter].attachedTo = attachedTo;
+    //  volumes[counter].mountPoint = mountPoint;
+    //  volumes[counter].device = device;
+    //  counter++;
+    //}
+    //myFile.close();
+    //myFile.clear();
 
     // 2) Look for the volume id to update
     for (int i=0; i<counter; i++){
-      if (volumes[i].id == vol) {
-  volumes[i].status = status;
-  volumes[i].attachedTo = ip;
-  volumes[i].mountPoint = mp;
-  volumes[i].device = d;
+      if (vols[i].id == vol) {
+        vols[i].status = status;
+        vols[i].attachedTo = ip;
+        vols[i].mountPoint = mp;
+        vols[i].device = d;
       }
     }
 
@@ -545,10 +537,10 @@ bool Volumes::ebsvolume_setstatus(std::string op, std::string vol, std::string s
 
     line = "";
     for (int i=0; i<counter; i++){
-      myFileOut << volumes[i].id << " " << volumes[i].status << " " << volumes[i].attachedTo << " " << volumes[i].mountPoint << " " << volumes[i].device << "\n";
+      myFileOut << vols[i].id << " " << vols[i].status << " " << vols[i].attachedTo << " " << vols[i].mountPoint << " " << vols[i].device << "\n";
     }
 
-    delete[] volumes;
+    //delete[] volumes;
     myFileOut.close();
     return 1;
   }
@@ -561,11 +553,11 @@ bool Volumes::ebsvolume_setstatus(std::string op, std::string vol, std::string s
     logger.log("debug", "infra1", "Volumes", transactionId, " request to [delete] volume:[" + vol + "] from disk file", "ebsvolume_setstatus");
     std::ifstream myFile;
     std::string line;
-    int counter = 0;
-    utility::Volume *volumes = new utility::Volume[100];
+    //int counter = 0;
+    //utility::Volume *volumes = new utility::Volume[100];
 
     // 1) load into array
-    myFile.open(_volumeFile.c_str());
+    /*myFile.open(_volumeFile.c_str());
     if (!myFile.is_open()){
       logger.log("error", "infra1", "Volumes", transactionId, "could not open disk file", "ebsvolume_setstatus");
       return 0;
@@ -585,11 +577,12 @@ bool Volumes::ebsvolume_setstatus(std::string op, std::string vol, std::string s
     }
     myFile.close();
     myFile.clear();
+*/
 
     // 2) Look for the volume id to update
     int location;
     for (int i=0; i<counter; i++){
-      if (volumes[i].id == vol) {
+      if (vols[i].id == vol) {
         location = i;
       }
     }
@@ -608,10 +601,10 @@ bool Volumes::ebsvolume_setstatus(std::string op, std::string vol, std::string s
       if (i == location) {
         continue;
       }else{
-        myFileOut << volumes[i].id << " " << volumes[i].status << " " << volumes[i].attachedTo << " " << volumes[i].mountPoint << " " << volumes[i].device << "\n";
+        myFileOut << vols[i].id << " " << vols[i].status << " " << vols[i].attachedTo << " " << vols[i].mountPoint << " " << vols[i].device << "\n";
       }
     }
-    delete[] volumes;
+    //delete[] volumes;
     myFileOut.close();
     return 1;
   }
@@ -1003,6 +996,7 @@ bool Volumes::load(){
   //load data
   counter=0;
   while (std::getline(myFile, line)) {
+            
       std::size_t vol_pos = line.find(' ', 0);
       vols[counter].id = line.substr(0, vol_pos);
       
@@ -1024,7 +1018,7 @@ bool Volumes::load(){
   
   myFile.close();
   myFile.clear();
-
+  
   return 0;
 	
 }
@@ -1034,6 +1028,7 @@ bool Volumes::load(){
  * Function: EBSVOLUME_PRINT
  * =============================================================================*/
 void Volumes::printxyz() {
+	
   if (counter != 0)
     for (int i=0; i<counter; i++)
       std::cout << "VolId:[" << vols[i].id << "] statu:[" << vols[i].status << "] attac:[" << vols[i].attachedTo << "] mount:[" << vols[i].mountPoint << "] devic:[" << vols[i].device << "]\n";
@@ -1045,13 +1040,19 @@ void Volumes::printxyz() {
  * =============================================================================*/
 void Volumes::remount(Logger &logger){
   std::string output;
+  
   if (counter == 0){
     logger.log("info", "infra1", "Volumes", 0, "no volumes to mount" , "remount");
     return;
   }
+  
+  
+  
   // for each item in the vols, chck if mounted, if not, then remount
   for ( int i=0; i<counter; i++){
+    
     if (!utility::is_mounted(vols[i].mountPoint)){
+    
       if (!utility::mountfs(output, vols[i].mountPoint, "/dev/"+vols[i].device)) {
         
         logger.log("info", "infra1", "Volumes", 0, "cannot mount filesystem. " + output , "remount");
@@ -1065,6 +1066,7 @@ void Volumes::remount(Logger &logger){
         ebsvolume_setstatus("delete", vols[i].id, vols[i].status, vols[i].attachedTo, vols[i].mountPoint, vols[i].device, 0, logger);
       }
     }
+    
   }
   logger.log("info", "infra1", "Volumes", 0, "all volumes are mounted successfully" , "remount");
 }

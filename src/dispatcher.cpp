@@ -32,7 +32,7 @@
 
   int inProgressVolumes;
   
-  Volumes volumes;
+  
   Snapshots snapshots;
 	
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -56,7 +56,7 @@
 
   int disk_prepare(utility::Volume& volume, Volumes& dc, int transactionId, Logger& logger);
   void get_arguments( int argc, char **argv );
-  int ensure_mounted(Logger &logger);
+  int ensure_mounted(Volumes &volumes, Logger &logger);
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  MAIN PROGRAM
@@ -112,14 +112,16 @@ int main ( int argc, char* argv[] )
   Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
   
   snapshots  = Snapshots(conf.SnapshotMaxNumber, conf.SnapshotFile, conf.SnapshotFrequency);
-  volumes = Volumes(true, conf.TempMountPoint, conf.VolumeFilePath, conf.MaxIdleDisk);
-
+  
+  Volumes volumes = Volumes(true, conf.TempMountPoint, conf.VolumeFilePath, conf.MaxIdleDisk);
+  
   // 4. ensure that volumes are mounted
-  if ( !ensure_mounted(logger) ){
+  if ( !ensure_mounted(volumes, logger) ){
     std::cout << "error: target filesystem " << conf.TargetFilesystemMountPoint << " is not mounted\n";
     return 0;
   }
  
+  
   // 5. get the hostname and the Amazon Instance Id for this machine
   hostname    = utility::get_hostname();
   instance_id = utility::get_instance_id();
@@ -767,21 +769,22 @@ int main ( int argc, char* argv[] )
   }
   
   
-  int ensure_mounted(Logger &logger){
-    
+  int ensure_mounted(Volumes &volumes, Logger &logger){
+
+    logger.log("info", hostname, "Dispatcher", 0, "ensure that all volumes are mounted");    
     std::string output;
     // first, check if targetFilesystem is mounted
     if ( !utility::is_mounted( conf.TargetFilesystemMountPoint ) ){
-      logger.log("info", "infra1", "Volumes", 0, "Target filesystem " +  conf.TargetFilesystemMountPoint + " was not mounted. >> mounting ...");
+      logger.log("info", "infra1", "Volumes", 0, "Target filesystem " +  conf.TargetFilesystemMountPoint + " is not mounted. >> mounting ...");
       if ( !utility::mountfs(output, conf.TargetFilesystemMountPoint, conf.TargetFilesystemDevice) ) {
         logger.log("info", "infra1", "Volumes", 0, "cannot mount target filesystem. " + output);
         return 0;
       }
     }  
-    
+    logger.log("info", hostname, "Dispatcher", 0, "Target filesystem " +  conf.TargetFilesystemMountPoint + " is mounted");    
     // then, check if previously created volumes are mounted
-    logger.log("info", hostname, "Dispatcher", 0, "ensure that all volumes are mounted");
     volumes.remount(logger);
+    logger.log("info", hostname, "Dispatcher", 0, "spare volumes are mounted");    
     
     return 1;
   }
