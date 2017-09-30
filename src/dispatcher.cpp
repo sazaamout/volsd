@@ -432,13 +432,13 @@ int main ( int argc, char* argv[] ) {
 	
 	int res = volumes.release( volumeId, transId );
 	// delete from volumes list (m_volumes)
-    logger.log("debug", "", "volumesd", transId, "delete volume from volumes list");	
+    logger.log("debug", "", "Manager", transId, "delete volume from volumes list");	
     volumes.del(volumeId, transId);
 	  
 	// delete from aws
-	logger.log("info", "", "volumesd", transId, "delete volume in aws enviroment");	
+	logger.log("info", "", "Manager", transId, "delete volume in aws enviroment");	
 	if ( !volumes.remove(volumeId, transId) ){
-	  logger.log("error", "", "volumesd", transId, 
+	  logger.log("error", "", "Manager", transId, 
                  "failed to delete volume:[" + volumeId + "] from amazon site");
     }
   }
@@ -450,13 +450,13 @@ int main ( int argc, char* argv[] ) {
   void createSnapshot_task(Snapshots& snapshots, int snapshotMaxNumber, std::string snapshotFile, 
                            int snapshotFreq) {
     Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
-    logger.log( "debug", "", "SnapShots", 0, "snapshots manager started" );	
+    logger.log( "debug", "", "Snapshots", 0, "snapshots manager started" );	
     
     std::string output;
     
     while (true) {
       if (!snapshots.create_snapshot(conf.TargetFilesystem, snapshotFreq, logger)){
-        logger.log( "error", "", "SnapShots", 0, "could not create new snapshot" );	
+        logger.log( "error", "", "Snapshots", 0, "could not create new snapshot" );	
       }
       sleep(snapshotFreq*60);
     }

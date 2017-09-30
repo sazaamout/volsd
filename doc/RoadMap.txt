@@ -6,7 +6,7 @@ utility
 - Put the parse_args function in utilities
 - redo the configuration load to a better way to avoid writing it more than one time
 - ensure that conf file is correct
-
+- redo the utility::is_root to use uuid
 
 dispatcher
 - ensure that the aws command is there
