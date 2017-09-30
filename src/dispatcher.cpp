@@ -13,9 +13,9 @@
 #include "Config.h"
 #include "Snapshots.h"
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- GLOBALS VARAIBLES AND STRUCTURES
- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/ 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// GLOBALS VARAIBLES AND STRUCTURES
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   utility::Port *portsArray;
   utility::Configuration conf;
 
@@ -35,32 +35,30 @@
   
   
 	
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- FUNCTION PROTOTYPES
- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-  // thread related functions
-  void disk_request_task(int portNo, std::string request, std::string ip, Volumes& d, int transId);
-  void disk_release_task(Volumes &volumes, std::string volId, int transId);
-  void volume_manager_task(Snapshots &snapshots, Volumes& d);
-  void debug_task(int portNo, Volumes& d);
-  void createDisk_task(Snapshots& s, Volumes& dc);
-  void removeDisk_task(Snapshots& s, Volumes& dc );
-  void createSnapshot_task(Snapshots& sshot, int snapshotMaxNumber, std::string snapshotFile, int snapshotFreq);
-  //void EBSVolumeManager_task();
-  //void EBSVolumeSync_task();
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// FUNCTION PROTOTYPES
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
   void populate_port_array();
   std::string get_ports();
   void print_ports();
   int get_available_port();
-
-  int disk_prepare(utility::Volume& volume, Volumes& dc, int transactionId, Logger& logger);
   void get_arguments( int argc, char **argv );
   int ensure_mounted(Volumes &volumes, Logger &logger);
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- MAIN PROGRAM
- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+  // thread related functions
+  void clientDiskAquire_handler(int portNo, std::string request, std::string ip, Volumes& d, 
+                                int transId);
+  void clientDiskRelease_handler(Volumes &volumes, std::string volId, int transId);
+  void createDisk_handler(Snapshots& s, Volumes& dc);
+  void removeDisk_handler(Snapshots& s, Volumes& dc );
+  void volume_manager_task(Snapshots &snapshots, Volumes& d);
+  void createSnapshot_task(Snapshots& sshot, int snapshotMaxNumber, std::string snapshotFile, 
+                           int snapshotFreq);
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// MAIN PROGRAM
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 using namespace std;
 using namespace utility;
 	
@@ -140,7 +138,12 @@ int main ( int argc, char* argv[] )
 
   // 8. start a thread to create a snapshot every 4 hours
   logger.log("info", "", "volumesd", 0, "starting the snapshot manager...");
-  std::thread snapshotManager_thread(createSnapshot_task, std::ref(snapshots), conf.SnapshotMaxNumber, conf.SnapshotFile, conf.SnapshotFrequency);
+  std::thread snapshotManager_thread( createSnapshot_task, 
+                                      std::ref(snapshots), 
+                                      conf.SnapshotMaxNumber, 
+                                      conf.SnapshotFile, 
+                                      conf.SnapshotFrequency
+                                    );
   snapshotManager_thread.detach();
   
   logger.log("info", "", "volumesd", 0, "volumesd programs started");
@@ -176,34 +179,44 @@ int main ( int argc, char* argv[] )
             
             // the reply to the client will be a communication port. The new port is used as
             // communication channel between the dispatcher and the client.
-            logger.log("info", "", "volumesd", transId, "request:[" + request + "] from client:[" + cip + "]");
+            logger.log("info", "", "volumesd", transId, "request:[" + request + "] from client:[" + 
+                       cip + "]");
             int availablePort = get_available_port();
             new_sock << utility::to_string(availablePort);
 
             logger.log( "debug", "", "volumesd", transId, 
-                        "reserving port:[" + utility::to_string(availablePort) + "] to client:[" + cip + "]"
+                        "reserving port:[" + utility::to_string(availablePort) + "] to client:[" + 
+                        cip + "]"
             );
 
             new_sock.close_socket();
             // start a new thread which will listen on the port sent to the client. 
             // this thread will handle the disk request
-            thread t1(disk_request_task, availablePort, request, cip, std::ref(volumes), transId);
+            thread t1( clientDiskAquire_handler, 
+                       availablePort, 
+                       request, 
+                       cip, 
+                       std::ref(volumes), 
+                       transId
+                     );
             t1.detach();
             break;
 
           } else if ( request.find("DiskRelease") != std::string::npos ) {
             
             // DiskRelease request format: "DiskRelease:volId"
-            logger.log("info", "", "volumesd", transId, "request:[" + request + "] from client:[" + cip + "]");
+            logger.log("info", "", "volumesd", transId, "request:[" + request + "] from client:[" + 
+                       cip + "]");
 	        std::string volId = request.substr( request.find(":")+1, request.find("\n") );	
 					
-	    if ( (volId == "") || (volId == " ") ) {
-              logger.log("error", "", "volumesd", transId, "client did not supply volume id to release");
+	        if ( (volId == "") || (volId == " ") ) {
+              logger.log("error", "", "volumesd", transId, 
+                         "client did not supply volume id to release");
               new_sock.close_socket();
               break;
             }
 					
-            thread disk_release_thread(disk_release_task, std::ref(volumes), volId, transId);
+            thread disk_release_thread(clientDiskRelease_handler, std::ref(volumes), volId, transId);
             disk_release_thread.detach();
 					
             new_sock.close_socket();
@@ -212,7 +225,8 @@ int main ( int argc, char* argv[] )
           } else {
 						
             msg = "unknown request, shutting down connection\n";
-            logger.log("error", "", "volumesd", transId, "unknown request:[" + request + "], shutting down connection");
+            logger.log("error", "", "volumesd", transId, "unknown request:[" + request + 
+                       "], shutting down connection");
             new_sock << msg;
             break;
           }
@@ -229,26 +243,24 @@ int main ( int argc, char* argv[] )
 }
 
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Functions 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
   // -------------------------------------------------------------------
   // TASK: Disk Request
   // -------------------------------------------------------------------
-  void disk_request_task(int portNo, std::string request, std::string ip, Volumes& volumes, int transId) {
+  void clientDiskAquire_handler(int portNo, std::string request, std::string ip, Volumes& volumes, 
+                         int transId) {
 	
 	
     Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
     
     logger.log("debug", "", "volumesd", transId, 
-               "awaiting clinet to connect tp port:[" + utility::to_string(portNo) + "]", "DiskRequestThread"
+               "awaiting clinet to connect tp port:[" + 
+               utility::to_string(portNo) + "]", "DiskRequestThread"
     );
 		
-    //int transaction = utility::get_transaction_id();   
-    //int transaction = utility::get_transaction_id();   
-		
-    //utility::Volume v;
     std::string msg, ack;
 		
     ServerSocket server ( portNo );
@@ -301,10 +313,12 @@ int main ( int argc, char* argv[] )
         logger.log("info", "", "volumesd", transId, "failed to update volumes status");
       }
 		  
-      logger.log("info", "", "volumesd", transId, "disk:[" + volumeId + "] is mounted on client machine");		  
+      logger.log("info", "", "volumesd", transId, "disk:[" + volumeId +
+                 "] is mounted on client machine");		  
       
     } else {
-      // Ideally, we want to put disk back, but for now, just delete the disk and the EBSmanager will create another one.
+      // Ideally, we want to put disk back, but for now, just delete the disk and the EBSmanager 
+      // will create another one.
       logger.log("info", "", "volumesd", transId, "ACK from clinent was [" + ack + "]");	
 
       // delete from volumes list (m_volumes)
@@ -328,11 +342,46 @@ int main ( int argc, char* argv[] )
 
 
   // -------------------------------------------------------------------
+  // clientDiskRelease_handler
+  // -------------------------------------------------------------------
+  void clientDiskRelease_handler(Volumes &dc, std::string volId, int transId) {
+	// ######### THIS IS NOT FINISHED YET
+	
+    Logger logger(_onscreen, conf.DispatcherLogPrefix, _loglevel);
+		
+    utility::Volume v;
+    v.id = volId;
+		
+    //check if vol exist
+    logger.log("info", "", "volumesd", transId, 
+               "checks if volume:[" + volId + "] exists in disk file");
+    if (!dc.ebsvolume_exist(v.id) || (v.id == "") || (v.id == " ") ){
+      logger.log("info", "", "volumesd", transId, "volume was not found in diskfile");
+      return;
+    }
+    logger.log("info", "", "volumesd", transId, "volume was found.");
+	
+    logger.log("info", "", "volumesd", transId, "removing volume:[" + v.id + "] from disk file");
+    m.lock();
+    dc.ebsvolume_setstatus( "delete", v.id, "idle", v.attachedTo, v.mountPoint, v.device, transId, 
+                            logger);
+    m.unlock();
+        
+    logger.log("info", "", "volumesd", transId, "deleting volume:[" + v.id + "]");
+    if (!dc.ebsvolume_delete(v, transId, logger)){
+      logger.log("error", "", "volumesd", transId, 
+                  "failed to delete volume:[" + v.id + "] from amazon site");
+      return;
+    }
+    logger.log("info", "", "volumesd", transId, "volume:[" + v.id + "] was deleted");
+  }
+ 
+  
+  // -------------------------------------------------------------------
   // TASK: Volume_Manager
   // -------------------------------------------------------------------
   void volume_manager_task(Snapshots &snapshots, Volumes &volumes){
 
-	  
 	Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
     logger.log( "debug", "", "Manager", 0, "volumes manager thread started" );	
     
@@ -344,57 +393,53 @@ int main ( int argc, char* argv[] )
       value = volumes.get_idle_number() + inProgressVolumes;
       if ( value < conf.MaxIdleDisk ){
         logger.log( "debug", "", "Manager", 0, "creating a new volume" );	
-        std::thread creatDisk_thread(createDisk_task, std::ref(snapshots), std::ref(volumes) );
+        std::thread creatDisk_thread(createDisk_handler, std::ref(snapshots), std::ref(volumes) );
         creatDisk_thread.detach();
       }
     
       if ( value > conf.MaxIdleDisk ){
         logger.log( "debug", "", "Manager", 0, "removing a volume" );	
-        std::thread removeDisk_thread(removeDisk_task, std::ref(snapshots), std::ref(volumes) );
+        std::thread removeDisk_thread(removeDisk_handler, std::ref(snapshots), std::ref(volumes) );
         removeDisk_thread.detach();
       }
     
       sleep(10);
     }  
-    
   }
 
 
   // -------------------------------------------------------------------
   // TASK: Create Disk
   // -------------------------------------------------------------------
-  void createDisk_task(Snapshots& snapshot, Volumes& volumes){
+  void createDisk_handler(Snapshots& snapshot, Volumes& volumes){
 	  
-	  Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
+	Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
   
     int transaction = utility::get_transaction_id();
     
     std::string snapshotId;
     if (!snapshot.latest(snapshotId, logger)){
-		  logger.log("info", "", "Manager", transaction, "No snapshot was found.");
-	  }
-		
+	  logger.log("info", "", "Manager", transaction, "No snapshot was found.");
+    }
   
     // set this varabile so that main wont create another thread to create new disk
     inProgressVolumes++;
-
-    
      
     // all of this operation myst be done in Volumes
-    if (!volumes.acquire( conf.TargetFilesystemMountPoint, snapshotId, conf.TempMountPoint, instance_id,  transaction )) {
+    if (!volumes.acquire( conf.TargetFilesystemMountPoint, snapshotId, conf.TempMountPoint, 
+                          instance_id,  transaction )) {
       logger.log("info", "", "Manager", transaction, "faield to acquire new volume.");
     }
     
     inProgressVolumes--;      
-    
-	  
+ 
   }
 
 
   // -------------------------------------------------------------------
   // TASK: Remove Disk 
   // -------------------------------------------------------------------
-  void removeDisk_task(Snapshots& s, Volumes& dc ) {
+  void removeDisk_handler(Snapshots& s, Volumes& dc ) {
 	int res = volumes.release( volumeId, transId );
 	// delete from volumes list (m_volumes)
     logger.log("debug", "", "volumesd", transId, "delete volume from volumes list");	
@@ -409,7 +454,8 @@ int main ( int argc, char* argv[] )
   // -------------------------------------------------------------------
   // TASK: Create Snapshot
   // -------------------------------------------------------------------
-  void createSnapshot_task(Snapshots& snapshots, int snapshotMaxNumber, std::string snapshotFile, int snapshotFreq) {
+  void createSnapshot_task(Snapshots& snapshots, int snapshotMaxNumber, std::string snapshotFile, 
+                           int snapshotFreq) {
     Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
     logger.log( "debug", "", "SnapShots", 0, "snapshots manager started" );	
     
@@ -423,42 +469,7 @@ int main ( int argc, char* argv[] )
     }
   }
 	
-  // -------------------------------------------------------------------
-  // DISK_RELEASE_TASK
-  // -------------------------------------------------------------------
-  void disk_release_task(Volumes &dc, std::string volId, int transId) {
-		
-    Logger logger(_onscreen, conf.DispatcherLogPrefix, _loglevel);
-		
-    utility::Volume v;
-    v.id = volId;
-		
-    //check if vol exist
-    logger.log("info", "", "volumesd", transId, 
-               "checks if volume:[" + volId + "] exist in disk file", "DiskReleaseThread"
-    );
-    if (!dc.ebsvolume_exist(v.id) || (v.id == "") || (v.id == " ") ){
-      logger.log("info", "", "volumesd", transId, "volume was not found in diskfile", "DiskReleaseThread");
-      return;
-    }
-    logger.log("info", "", "volumesd", transId, "volume was found.", "DiskReleaseThread");
 	
-    logger.log("info", "", "volumesd", transId, "removing volume:[" + v.id + "] from disk file", "DiskReleaseThread");
-    m.lock();
-    dc.ebsvolume_setstatus( "delete", v.id, "idle", v.attachedTo, v.mountPoint, v.device, transId, logger);
-    m.unlock();
-        
-    logger.log("info", "", "volumesd", transId, "deleting volume:[" + v.id + "]", "DiskReleaseThread");
-    if (!dc.ebsvolume_delete(v, transId, logger)){
-      logger.log("error", "", "volumesd", transId, 
-                  "failed to delete volume:[" + v.id + "] from amazon site", "DiskReleaseThread"
-      );
-      return;
-    }
-    logger.log("info", "", "volumesd", transId, "volume:[" + v.id + "] was deleted", "DiskReleaseThread");
-  }
-
-
   // -------------------------------------------------------------------
   // POPULATE_PORT_ARRAY
   // -------------------------------------------------------------------
@@ -569,17 +580,21 @@ int main ( int argc, char* argv[] )
   
   int ensure_mounted(Volumes &volumes, Logger &logger){
     // add attach part to this
-    logger.log("info", "", "volumesd", 0, "ensure that target filesystem and spare volumes are mounted");    
+    logger.log("info", "", "volumesd", 0, 
+               "ensure that target filesystem and spare volumes are mounted");    
     std::string output;
     // first, check if targetFilesystem is mounted
     if ( !utility::is_mounted( conf.TargetFilesystemMountPoint ) ){
-      logger.log("info", "", "volumesd", 0, "Target filesystem " +  conf.TargetFilesystemMountPoint + " is not mounted. >> mounting ...");
-      if ( !utility::mountfs(output, conf.TargetFilesystemMountPoint, conf.TargetFilesystemDevice) ) {
+      logger.log("info", "", "volumesd", 0, "Target filesystem " +  
+                 conf.TargetFilesystemMountPoint + " is not mounted. >> mounting ...");
+      if ( !utility::mountfs(output, conf.TargetFilesystemMountPoint, conf.TargetFilesystemDevice) ) 
+      {
         logger.log("info", "", "volumesd", 0, "cannot mount target filesystem. " + output);
         return 0;
       }
     }  
-    logger.log("info", "", "volumesd", 0, "Target filesystem " +  conf.TargetFilesystemMountPoint + " is mounted");    
+    logger.log("info", "", "volumesd", 0, "Target filesystem " +  conf.TargetFilesystemMountPoint + 
+               " is mounted");    
     // then, check if previously created volumes are mounted
     volumes.remount();
     
