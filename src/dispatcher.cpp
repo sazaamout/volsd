@@ -2,12 +2,13 @@
 #include <iostream>
 #include <thread>
 #include "SocketException.h"
-#include "Volumes.h"
 #include "ServerSocket.h"
+#include "Volumes.h"
+#include "Snapshots.h"
 #include "Utils.h"
 #include "Logger.h"
 #include "Config.h"
-#include "Snapshots.h"
+
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // GLOBALS VARAIBLES AND STRUCTURES
@@ -25,14 +26,10 @@
   int _loglevel = 3;
 
   int inProgressVolumes;
-  
-  
-  
-	
+
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // FUNCTION PROTOTYPES
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
   void populate_port_array();
   std::string get_ports();
   void print_ports();
@@ -41,12 +38,12 @@
   int ensure_mounted(Volumes &volumes, Logger &logger);
 
   // thread related functions
-  void clientDiskAquire_handler(int portNo, std::string request, std::string ip, Volumes& d, 
+  void clientDiskAquire_handler(int portNo, std::string request, std::string ip, Volumes &volumes, 
                                 int transId);
   void clientDiskRelease_handler(Volumes &volumes, std::string volId, int transId);
-  void createDisk_handler(Snapshots& s, Volumes& dc);
-  void removeDisk_handler(Snapshots& s, Volumes& dc );
-  void volume_manager_task(Snapshots &snapshots, Volumes& d);
+  void createDisk_handler(Snapshots& s, Volumes& volumes);
+  void removeDisk_handler(Snapshots& s, Volumes& volumes );
+  void volume_manager_task(Snapshots &snapshots, Volumes& volumes);
   void createSnapshot_task(Snapshots& sshot, int snapshotMaxNumber, std::string snapshotFile, 
                            int snapshotFreq);
 
@@ -56,8 +53,7 @@
 using namespace std;
 using namespace utility;
 	
-int main ( int argc, char* argv[] ) 
-{
+int main ( int argc, char* argv[] ) {
   
   std::string request, ack, cip;
   std::string msg;
@@ -247,7 +243,6 @@ int main ( int argc, char* argv[] )
   void clientDiskAquire_handler(int portNo, std::string request, std::string ip, Volumes& volumes, 
                          int transId) {
 	
-	
     Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
     
     logger.log("debug", "", "volumesd", transId, 
@@ -262,7 +257,6 @@ int main ( int argc, char* argv[] )
     ServerSocket s;
     server.accept ( s );
 		
-    
     std::string volumeId;
     int res = volumes.release( volumeId, transId );
     if (res == -1) {
@@ -319,9 +313,10 @@ int main ( int argc, char* argv[] )
       logger.log("info", "", "volumesd", transId, "delete volume from volumes list");	
       volumes.del(volumeId, transId);
 	  
-	  // delete from aws
-	  logger.log("info", "", "volumesd", transId, "delete volume in aws enviroment");	
-	  volumes.remove(volumeId, transId);
+	  if ( !volumes.remove(volumeId, transId) ){
+	    logger.log("error", "", "volumesd", transId, 
+                 "failed to delete volume:[" + volumeId + "] from amazon site");
+      }
 	  
       logger.log("info", "", "volumesd", transId, "aborting ...");		  
 	  
@@ -338,36 +333,31 @@ int main ( int argc, char* argv[] )
   // -------------------------------------------------------------------
   // clientDiskRelease_handler
   // -------------------------------------------------------------------
-  void clientDiskRelease_handler(Volumes &dc, std::string volId, int transId) {
-	// ######### THIS IS NOT FINISHED YET
+  void clientDiskRelease_handler(Volumes &volumes, std::string volumeId, int transId) {
 	
-    Logger logger(_onscreen, conf.DispatcherLogPrefix, _loglevel);
-		
-    utility::Volume v;
-    v.id = volId;
+    Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
 		
     //check if vol exist
     logger.log("info", "", "volumesd", transId, 
-               "checks if volume:[" + volId + "] exists in disk file");
-    if (!dc.ebsvolume_exist(v.id) || (v.id == "") || (v.id == " ") ){
-      logger.log("info", "", "volumesd", transId, "volume was not found in diskfile");
+               "get the volume:[" + volumeId + "] information");
+    if (!volumes.volume_exist(volumeId) || (volumeId == "") || (volumeId == " ") ){
+      logger.log("info", "", "volumesd", transId, "volume was not found.");
       return;
     }
-    logger.log("info", "", "volumesd", transId, "volume was found.");
-	
-    logger.log("info", "", "volumesd", transId, "removing volume:[" + v.id + "] from disk file");
-    m.lock();
-    dc.ebsvolume_setstatus( "delete", v.id, "idle", v.attachedTo, v.mountPoint, v.device, transId, 
-                            logger);
-    m.unlock();
-        
-    logger.log("info", "", "volumesd", transId, "deleting volume:[" + v.id + "]");
-    if (!dc.ebsvolume_delete(v, transId, logger)){
-      logger.log("error", "", "volumesd", transId, 
-                  "failed to delete volume:[" + v.id + "] from amazon site");
+
+    // delete from volumes list (m_volumes)
+    logger.log("info", "", "volumesd", transId, "delete volume from volumes list");	
+    volumes.del(volumeId, transId);
+	  
+	// delete from aws
+	logger.log("info", "", "volumesd", transId, "delete volume in aws enviroment");	
+	if ( !volumes.remove(volumeId, transId) ){
+	  logger.log("error", "", "volumesd", transId, 
+                 "failed to delete volume:[" + volumeId + "] from amazon site");
       return;
-    }
-    logger.log("info", "", "volumesd", transId, "volume:[" + v.id + "] was deleted");
+	}
+    
+    logger.log("info", "", "volumesd", transId, "volume:[" + volumeId + "] was deleted");
   }
  
   
@@ -433,7 +423,13 @@ int main ( int argc, char* argv[] )
   // -------------------------------------------------------------------
   // TASK: Remove Disk 
   // -------------------------------------------------------------------
-  void removeDisk_handler(Snapshots& s, Volumes& dc ) {
+  void removeDisk_handler(Snapshots& s, Volumes& volumes ) {
+	  
+	Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
+	  
+	std::string volumeId;
+	int transId = utility::get_transaction_id();
+	
 	int res = volumes.release( volumeId, transId );
 	// delete from volumes list (m_volumes)
     logger.log("debug", "", "volumesd", transId, "delete volume from volumes list");	
@@ -441,7 +437,10 @@ int main ( int argc, char* argv[] )
 	  
 	// delete from aws
 	logger.log("info", "", "volumesd", transId, "delete volume in aws enviroment");	
-	volumes.remove(volumeId, transId);
+	if ( !volumes.remove(volumeId, transId) ){
+	  logger.log("error", "", "volumesd", transId, 
+                 "failed to delete volume:[" + volumeId + "] from amazon site");
+    }
   }
   
   

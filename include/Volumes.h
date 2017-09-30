@@ -83,10 +83,7 @@ class Volumes
     // -----------------------------------
     
     
-    
-    int ebsvolume_exist(std::string volId);
-    
-    
+    int volume_exist( const std::string volId );
     
     bool ebsvolume_setstatus(std::string , std::string, std::string, std::string, std::string, std::string, int transactionId, Logger& logger );
     

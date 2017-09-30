@@ -1022,7 +1022,7 @@ int Volumes::release_volume( std::string& v, std::string instance_id, std::strin
 
   std::string output;
 
-  // given a mountPoint, get the device name
+  // 1. given a mountPoint, get the device name
   if (d) std::cout << " Volumes(" << transactionId << ")::release_volume:: Get the device name given mountPoint\n";
   int res = utility::exec(output,  "df " + mountPoint + " | grep -oP ^/dev/[a-z0-9/]+");
   if (!res) {
@@ -1037,7 +1037,7 @@ int Volumes::release_volume( std::string& v, std::string instance_id, std::strin
   if (d) std::cout << " Volumes(" << transactionId << ")::release_volume:: ExitCode:" << res << ". device name found:[" << device << "]\n\n";
 
 
-  // given the device, get the volume id.
+  // 2. given the device, get the volume id.
   if (d) std::cout << " Volumes(" << transactionId << ")::release_volume:: volume-id given device:[" << device << "] and instance-id:[" << instance_id << "]\n";
   std::string cmd = "aws ec2 describe-instances --instance-id " + instance_id + " --query \"Reservations[*].Instances[*].BlockDeviceMappings[\?DeviceName==\'" + device + "\'].Ebs.VolumeId\" --output text";
   if (d) std::cout << cmd << "\n";
@@ -1192,45 +1192,23 @@ std::string Volumes::get_device(std::vector<std::string>& list) {
 }
 
 
-/* =============================================================================
- * Function: EBSVOLUME_EXIST
- * Description:
- *        given a volumeId, checks if a volume exist or not in the disk file.
- * =============================================================================*/
-int Volumes::ebsvolume_exist(std::string volId){
+int Volumes::volume_exist( const std::string volId ){
 
-  std::ifstream myFile;
-  std::string line;
-  myFile.open(_volumeFile.c_str());
-  if (!myFile.is_open())
-    return 0;
-  while (std::getline(myFile, line)) {
-    if ( line.find(volId) !=std::string::npos )
-      return 1;
+  std::vector<utility::Volume>::iterator it;
+  for(it = m_volumes.begin(); it != m_volumes.end(); ++it) {
+    if ( it->id == volId ) {
+	  return 1;
+	}
   }
-  myFile.close();
-  myFile.clear();
   return 0;
 }
 
 
-
 int Volumes::release (std::string &volumeId, int transactionId) {
-  // ideas, pass the logger to the constructor of this class
-  
-  // this will perform the following tasks
-  // 1. get an idle volume
-  // 2. umount that volume from the localhost
-  // 3. detach that volume from localhost
-  // 4. change the volume status to 'inprogress'
-  // 5. return the volumes Id to the caller
-  
-  
   
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // 1. Get Idle Volume  
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
-      
   int idleVolIndex;
   
   logger->log("info", "", "volumed", transactionId, "looking for idle volume");
@@ -1244,7 +1222,6 @@ int Volumes::release (std::string &volumeId, int transactionId) {
     if (!update(m_volumes[idleVolIndex].id, "status", "inprogress", transactionId)) {
       logger->log("info", "", "volumed", transactionId, "failed to update volumes status");
     }
-    
   }
   
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
@@ -1328,7 +1305,6 @@ bool Volumes::load(){
       m_volumes.push_back(v);
   }
   
-  
   myFile.close();
   myFile.clear();
   return 0;
@@ -1340,7 +1316,7 @@ bool Volumes::load(){
  * Function: EBSVOLUME_PRINT
  * =============================================================================*/
 void Volumes::printxyz() {
-	for(std::vector<utility::Volume>::iterator it = m_volumes.begin(); it != m_volumes.end(); ++it) {
+  for(std::vector<utility::Volume>::iterator it = m_volumes.begin(); it != m_volumes.end(); ++it) {
     std::cout << "VolId:["   << it->id 
               << "] statu:[" << it->status 
               << "] attac:[" << it->attachedTo 
