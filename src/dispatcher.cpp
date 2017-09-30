@@ -395,37 +395,14 @@ int main ( int argc, char* argv[] )
   // TASK: Remove Disk 
   // -------------------------------------------------------------------
   void removeDisk_task(Snapshots& s, Volumes& dc ) {
-	/*
-    Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
-    int transaction = utility::get_transaction_id();
-    
-    utility::Volume v;
-    
-    std::cout << " REMOVE_DISK(" << transaction << "):: thread started: REMOVING extra Disk \n";
-    logger.log("info", "", "Manager", transaction, "exsting volumes numbner exceeds the MaxIdleDisk");
-    
-    if (!dc.ebsvolume_idle(v, transaction, logger)) 
-      return;
-    
-    m.lock();
-    dc.ebsvolume_setstatus( "delete", v.id, v.status, v.attachedTo, v.mountPoint, v.device, transaction, logger);
-    m.unlock();
-  
-    if (!dc.ebsvolume_umount(v, transaction, logger)){
-      return;
-    }
-
-    if (!dc.ebsvolume_detach(v, transaction, logger)) 
-      return;
-    
-    if (!dc.ebsvolume_delete(v, transaction, logger)) 
-      return;  
-    
-    if (!dc.remove_mountpoint(v.mountPoint, transaction, logger)) 
-      return;  
-  
-    std::cout << "REMOVE_DISK(" << transaction << "):: thread finished. \n";
-    */
+	int res = volumes.release( volumeId, transId );
+	// delete from volumes list (m_volumes)
+    logger.log("debug", "", "volumesd", transId, "delete volume from volumes list");	
+    volumes.del(volumeId, transId);
+	  
+	// delete from aws
+	logger.log("info", "", "volumesd", transId, "delete volume in aws enviroment");	
+	volumes.remove(volumeId, transId);
   }
   
   

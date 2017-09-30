@@ -1,9 +1,6 @@
 Volumes
-- Add 'release' and 'quire' functions and remove it from dispatcher and dont forget to use locks when using write_to_file function
-- Move the syncing funtionality to Volumes Class (think about it)
 - adds an entry in the /etc/fstab for the mounted disk
-- currenlty, Volumes class reads from diskinfo file direcoty, make it read from an array
-- use dynamic array to avoid segment fault in manager, disk, dispatcher (Done, need testing)
+
 
 utility
 - Put the parse_args function in utilities
@@ -40,8 +37,8 @@ DONE:
 - Merge the Dispatcher with the manager (done)
 - have snapshots class to use unix time rather than actual time. Also, store data in unix time (done)
 - mount/ensure the target file system (done)
-
-
-
+- Add 'release' and 'quire' functions and remove it from dispatcher and dont forget to use locks when using write_to_file function (done)
+- Move the syncing funtionality to Volumes Class (think about it)
+- currenlty, Volumes class reads from diskinfo file direcoty, make it read from an array
 
 ebsvolume_idle <=> get_idleVolume
