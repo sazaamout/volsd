@@ -1,10 +1,6 @@
 #include <string>
 #include <iostream>
-#include <sstream>
 #include <thread>
-#include <fstream>
-#include <mutex>
-
 #include "SocketException.h"
 #include "Volumes.h"
 #include "ServerSocket.h"
@@ -21,8 +17,6 @@
 
   std::string hostname; 
   std::string instance_id;
-	
-  std::mutex m;
 	
   std::vector<std::string>  devices_list;
 	
