@@ -44,7 +44,11 @@ namespace utility
   std::string to_string(std::vector<std::string>& v){
     std::string str;
     for(std::vector<std::string>::iterator it = v.begin(); it != v.end(); ++it) {
-      str.append(*it + " " );
+      if ( it == v.end() - 1 ){
+        str.append(*it);
+      } else {
+        str.append(*it + " " );
+      }
     }
     return str;
   }
@@ -564,7 +568,23 @@ namespace utility
     return true;
   }
   
-  
+ 
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // MOUNT FUNCTION
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  bool umountfs( std::string &output, std::string mountPoint ){
+    const char* trgt = mountPoint.c_str();
+    int result = umount(trgt);
+
+    if (result == 0) {
+      return true;
+    } else {
+      output = strerror(errno);
+      return false;
+    }
+
+    return true;
+  } 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // is mounted FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -613,6 +633,14 @@ namespace utility
     return 1;
   }
   
+  
+  bool folder_remove( const std::string dirname){
+    if ( !rmdir(dirname.c_str())) {
+      return false;
+    }
+    return true;
+  }
+
   
   bool is_empty(std::string path){
     std::fstream myFile;

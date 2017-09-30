@@ -63,7 +63,7 @@ int Snapshots::create_snapshot(std::string TargetFilesystem, int frequency, Logg
   // create a new snapshot  
   logger.log("debug", "infra1", "SnapshotClass", 0, "creating new snapshot ...", "create_snapshot");  
   
-  int res = utility::exec(output, "aws ec2 create-snapshot --volume-id " + TargetFilesystem + " --description \"This is my root volume snapshot\" --region us-east-1 --query SnapshotId --output text");
+  int res = utility::exec(output, "aws ec2 create-snapshot --volume-id " + TargetFilesystem + " --description \"volumed: Snapshots for the targe filesystem\" --region us-east-1 --query SnapshotId --output text");
   if (!res){
     logger.log("error", "infra1", "SnapshotClass", 0, "Failed to create new snapshot", "create_snapshot");  
     logger.log("error", "infra1", "SnapshotClass", 0, "AWSERROR:[" + output + "]", "create_snapshot");  

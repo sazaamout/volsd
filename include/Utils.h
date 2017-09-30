@@ -21,64 +21,66 @@
 #include <mntent.h>   // used for is_mount function
 #include <sys/mount.h>
 #include <errno.h>
+#include <unistd.h> // for rmdir
 
 namespace utility
 {
 	struct Volume {
-      std::string id;
-      std::string status;
-      std::string attachedTo;
-      std::string mountPoint;
-      std::string device;
-    };
+    std::string id;
+    std::string status;
+    std::string attachedTo;
+    std::string mountPoint;
+    std::string device;
+  };
     
-   	struct Port{
-		int portNo;
-		bool status;
+  struct Port{
+	 int portNo;
+	 bool status;
 	};
 
-    struct ReturnValue {
-      std::string data;
-      std::string errorMsg;
-    };
+  struct ReturnValue {
+    std::string data;
+    std::vector<std::string> errors;
+    std::vector<std::string> debug;
+  };
     
-    struct Configuration {
-		std::string Hostname;
-		int SnapshotFrequency;
-		std::string SnapshotFile;
-		int SnapshotMaxNumber;
-		std::string TargetFilesystem;
-		std::string TargetFilesystemMountPoint;
+  struct Configuration {
+	  std::string Hostname;
+    int SnapshotFrequency;
+    std::string SnapshotFile; 
+	  int SnapshotMaxNumber;
+	  std::string TargetFilesystem;
+	  std::string TargetFilesystemMountPoint;
     std::string TargetFilesystemDevice;
-		std::string TempMountPoint;
-		std::string VolumeFilePath;
-		int MaxIdleDisk;
-		std::string ManagerLogFile;
-		std::string DispatcherLogPrefix;
-		std::string ClientLogFile;
-		std::string SyncerLogFile;
-		int MasterLoglevel;
-		int ManagerLoglevel;
-		int DispatcherLoglevel;
-		int ClientLoglevel;
-		int Syncerloglevel;
+	  std::string TempMountPoint;
+	  std::string VolumeFilePath;
+	  int MaxIdleDisk;
+	  std::string ManagerLogFile;
+	  std::string DispatcherLogPrefix;
+	  std::string ClientLogFile;
+	  std::string SyncerLogFile;
+	  int MasterLoglevel;
+	  int ManagerLoglevel;
+	  int DispatcherLoglevel;
+	  int ClientLoglevel;
+	  int Syncerloglevel;
 		
-		int SyncerServicePort;
-		int SyncFrequency;
-		std::string SyncRequestsFile;
-		std::string SyncDatesFile;
+	  int SyncerServicePort;
+	  int SyncFrequency;
+	  std::string SyncRequestsFile;
+	  std::string SyncDatesFile;
 		
-		std::string SynErrorEmailTo;
-		std::string SynOutputEmailTo;
-		
-		std::string EmailSynOutput;
-		std::string EmailSynError;
-		
-		std::string RemoteRsyncCommand;
-		std::string LocalRsyncCommand;
-                std::string EmailPushOutput;
-                std::string EmailPushError;
-                std::string EmailPushEmail;
+	  std::string SynErrorEmailTo;
+	  std::string SynOutputEmailTo;
+	
+    std::string EmailSynOutput;
+    std::string EmailSynError;
+	
+	  std::string RemoteRsyncCommand;
+	  std::string LocalRsyncCommand;
+    std::string EmailPushOutput;
+    std::string EmailPushError;
+    std::string EmailPushEmail;
 
 	};
 	
@@ -119,8 +121,9 @@ namespace utility
   bool folders_create(std::string prefix, std::size_t pos = 1);
   bool folder_create(std::string path);
   bool folder_is_empty(const std::string dirname);
-
-  bool mountfs( std::string &output, std::string mountPoint, std::string device );
+  bool folder_remove( const std::string dirname);
+  bool mountfs ( std::string &output, std::string mountPoint, std::string device );
+  bool umountfs( std::string &output, std::string mountPoint );
   bool is_mounted( const std::string dir);
   
 	int send_email(std::string title, std::string message, std::string to);

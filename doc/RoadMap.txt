@@ -1,42 +1,47 @@
-1. Rename the Disks Class to Volume and investigate whether you need it to be a class or namespace (Done. Made it as class)
-2. Merge the Dispatcher with the manager (done)
+Volumes
+- Add 'release' and 'quire' functions and remove it from dispatcher and dont forget to use locks when using write_to_file function
+- Move the syncing funtionality to Volumes Class (think about it)
+- adds an entry in the /etc/fstab for the mounted disk
+- currenlty, Volumes class reads from diskinfo file direcoty, make it read from an array
+- use dynamic array to avoid segment fault in manager, disk, dispatcher (Done, need testing)
 
-2. Add 'release' and 'quire' functions
+utility
+- Put the parse_args function in utilities
+- redo the configuration load to a better way to avoid writing it more than one time
+- ensure that conf file is correct
 
-3. Modify Logger class to accept localhost_name, program_name in the constructor to avoid typing these everytime
 
-4. Put the parse_args function in utilities
+dispatcher
+- ensure that the aws command is there
+- fixed the disatcher pars_args function (done for dispatcher. Still needed for sync and client)
 
-5. redo the configuration load to a better way to avoid writing it more than one time
 
-6. Removing the syncing from inside the sync.cpp file and put it in a separate file
 
-7. Move the syncing funtionality to Disks(Volumes Class)
+sync
+- Removing the syncing from inside the sync.cpp file and put it in a separate file (think about it)
 
-8. fixed the disatcher pars_args function (done for dispatcher. Still needed for sync and client)
 
-9. use dynamic array to avoid segment fault in manager, disk, dispatcher
+General 
+- When installing the machine on a new machine, make sure that the installer creates the direcotryes for TempMountPoint VolumeFilePath SnapshotFile *LogFile. All of these varibles etcist on the erc/config file. (done, need test)
+- Create a sync class so it can be used by dispatcher and synchroziner and Volumes class
+- start a cleaner thread that check if volumes are correct
 
-10. When installing the machine on a new machine, make sure that the installer creates the direcotryes for TempMountPoint VolumeFilePath SnapshotFile *LogFile. All of these varibles etcist on the erc/config file.
 
-11. make sure that the dispatcher and client program adds an entry in the /etc/fstab for the mounted disk
+Logger
+- remove '2017' from logger
+- Modify Logger class to accept localhost_name, program_name in the constructor to avoid typing these everytime
 
-12. Create a sync class so it can be used by dispatcher and synchroziner and Volumes class
 
-13. have snapshots class to use unix time rather than actual time. Also, store data in unix time
+DONE:
+- Reimplement the mount function to use <sys/mount.h> library (done)
+- ensure idele volumes are mounted at the begining of the program (done)
+- ensure target filesystem is mounted at the begining of the program (done)
+- Rename the Disks Class to Volume and investigate whether you need it to be a class or namespace (Done. Made it as class)
+- Merge the Dispatcher with the manager (done)
+- have snapshots class to use unix time rather than actual time. Also, store data in unix time (done)
+- mount/ensure the target file system (done)
 
-14. mount/ensure the target file system 
 
-15. start a cleaner thread that check if volumes are correct
 
-16. ensure that the aws command is there
 
-17. ensure that conf file is correct
-
-18. Reimplement the mount function to use <sys/mount.h> library (done)
-19. ensure idele volumes are mounted at the begining of the program (done)
-20. ensure target filesystem is mounted at the begining of the program (done)
-
-21. start a cleaner thread that check if volumes are correct
-22. TODO: ensure that the aws command is there
-23. currenlty, Volumes class reads from diskinfo file direcoty, make it read from an array
+ebsvolume_idle <=> get_idleVolume
