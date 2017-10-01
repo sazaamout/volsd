@@ -10,24 +10,29 @@
 #include "Volumes.h"
 #include "Utils.h"
 #include "Logger.h"
-
+#include "Config.h"
 
 // ----------------------------------------------------------------------
 // GLOBALS VARAIBLES AND STRUCTURES
 // ----------------------------------------------------------------------
-#define INSTANCE_VIRT_TYPE  HVM;
-#define aws_region  "us_east_1";
+//#define INSTANCE_VIRT_TYPE  HVM;
+//#define aws_region  "us_east_1";
 std::string volume; // ? do we need?
 std::string instance_id;
 
+bool diskAcquireRequest = false;
+bool diskReleaseRequest = false;
+bool _onscreen          = false;
+std::string  mountPoint;
 // -----------------------------------------------------------------------------
 // FUNCTIONS PROTOTYPE
 // -----------------------------------------------------------------------------
 int  mount_vol(std::string volume, std::string mountPoint, Logger& logger);
-bool disk_request(std::string mountPoint);
+bool disk_acquire();
 void disk_release(std::string mountPoint);
 void disk_push(std::string mountPoint);
 
+void get_arguments( int argc, char **argv );
 // -----------------------------------------------------------------------------
 // MAIN PROGRAM
 // -----------------------------------------------------------------------------
@@ -36,26 +41,28 @@ using namespace utility;
 
 int main ( int argc, char* argv[] )
 {
+  // user must be root
   if (!utility::is_root()){
-    std::cout << "user is not root\n";
+    std::cout << "error: program must be ran as root\n";
     return 1;
   }
-  std::string volume, output;
+  get_arguments( argc, argv );
     
-  std::string request = argv[1];
-  std::string mountPoint = argv[2];
+  std::string volume, output;
+  
   // Collect instance information
   instance_id = utility::get_instance_id(); 
       
-  if (request.compare("DiskRequest") == 0) {
-    if (!disk_request(mountPoint)){
+  if ( diskAcquireRequest ) {
+    std::cout << "diskAcquire\n";
+    if (!disk_acquire()){
       return 1; // exit with error
     }
-  } else if ( request.compare("DiskRelease") == 0){
-    disk_release(mountPoint);
-  } else {
-    std::cout << "unknown request\n";
-    return 0;
+  }
+  
+  if ( diskReleaseRequest ){
+    std::cout << "diskRelease\n";
+    //disk_release(mountPoint);
   }
     
   return 0;
@@ -68,9 +75,9 @@ int main ( int argc, char* argv[] )
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // DISK_REQUEST FUNCTION
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  bool disk_request(std::string mountPoint) {
+  bool disk_acquire() {
     
-    Logger logger(true, "/var/log/messages", 3);
+    Logger logger(_onscreen, "/var/log/messages", 3);
     // ----------------------------------------------
     // 1) Get the port for communications with server
     // ----------------------------------------------
@@ -78,7 +85,7 @@ int main ( int argc, char* argv[] )
     std::string reply;
     try {
       std::cout << "Connecting to Port 90000\n"; 
-      logger.log("info", "Unknown", "EBSCLient", 0, "connecting to port:[9000]", "Disk_request");
+      logger.log("info", "", "volumesd-client", 0, "connecting to port:[9000]");
       ClientSocket client_socket ( "10.2.1.30", 9000 );
       std::string msg, ack;
 
@@ -86,12 +93,12 @@ int main ( int argc, char* argv[] )
         msg = "DiskRequest";
         client_socket << msg;
         client_socket >> reply;
-        logger.log("info", "Unknown", "EBSCLient", 0, "response from the server:[" + reply + "]", "Disk_request");
+        logger.log("info", "", "volumesd-client", 0, "response from the server:[" + reply + "]");
         
       } catch ( SocketException& ) {}
     }
     catch ( SocketException& e ){
-      logger.log("error", "Unknown", "EBSCLient", 0, "Exception was caught:" + e.description(), "Disk_request");
+      logger.log("error", "", "volumesd-client", 0, "Exception was caught:" + e.description());
       return false;
     }
 
@@ -99,7 +106,7 @@ int main ( int argc, char* argv[] )
     // 2) Connect to the port and start reciving
     // ----------------------------------------------
     try {
-      logger.log("info", "Unknown", "EBSCLient", 0, "Connecting to Port:[" + reply + "]", "Disk_request");
+      logger.log("info", "", "volumesd-client", 0, "Connecting to Port:[" + reply + "]");
 
       sleep(2);
       ClientSocket client_socket ( "10.2.1.30", utility::to_int(reply) );
@@ -109,18 +116,18 @@ int main ( int argc, char* argv[] )
       try {
         client_socket >> reply;
 
-        logger.log("info", "Unknown", "EBSCLient", 0, "response from server:[" + reply + "]", "Disk_request");
+        logger.log("info", "", "volumesd-client", 0, "response from server:[" + reply + "]");
  
         if (reply.compare("MaxDisksReached") == 0) {
-          logger.log("error", "Unknown", "EBSCLient", 0, "Maimum Number of volume reached", "Disk_request");
+          logger.log("error", "", "volumesd-client", 0, "Maimum Number of volume reached");
           return false;
         
         }else if (reply.compare("umountFailed") == 0) {
-          logger.log("error", "Unknown", "EBSCLient", 0, "server was unable unmount volume", "Disk_request");
+          logger.log("error", "", "volumesd-client", 0, "server was unable unmount volume");
           return false;
 
         }else if (reply.compare("detachFailed") == 0) {
-          logger.log("error", "Unknown", "EBSCLient", 0, "server was unable to detach volume", "Disk_request");
+          logger.log("error", "", "volumesd-client", 0, "server was unable to detach volume");
           return false;
 
         }else {
@@ -128,7 +135,7 @@ int main ( int argc, char* argv[] )
           // chcek if mount was successfyl. If not, return Failed so disk status can be 
           // set back to idle
           if (!res) {
-            logger.log("error", "Unknown", "EBSCLient", 0, "unable to mount volume, exit", "Disk_request");
+            logger.log("error", "", "volumesd-client", 0, "unable to mount volume, exit");
             ack = "FAILED";
             client_socket << ack;
             return false;
@@ -138,7 +145,7 @@ int main ( int argc, char* argv[] )
         }
       } catch ( SocketException& ) {}
     } catch ( SocketException& e ){
-      logger.log("error", "Unknown", "EBSCLient", 0, "Exception was caught:" + e.description(), "Disk_request");
+      logger.log("error", "", "volumesd-client", 0, "Exception was caught:" + e.description());
       return false;
     }
     
@@ -151,7 +158,7 @@ int main ( int argc, char* argv[] )
   // MOUNT_VOL FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   int mount_vol(std::string volume, std::string mountPoint, Logger& logger) {
-  
+    /* REMOVE TO BE ABLE TO START FROM SCRATCH
     std::string output;
         
     // TODO: fix this. passing the path here does not have effect since we are going to use a function that does not need that path
@@ -185,7 +192,7 @@ int main ( int argc, char* argv[] )
       dc.ebsvolume_delete(v, transaction, logger);
       return 0;
     }
-        
+        */
     return 1;
   }
 
@@ -197,7 +204,7 @@ int main ( int argc, char* argv[] )
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   
   void disk_release(std::string mountPoint) {
-    
+    /* REMOVE TO BE ABLE TO START FROM SCRATCH
     Logger logger(true, "/var/log/messages", 3);
     
     std::string reply;
@@ -223,12 +230,14 @@ int main ( int argc, char* argv[] )
     }  
     
     //logger.flush();
+    * */
   }
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // DISK_PUSH FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   void disk_push(std::string mountPoint){
+   /* REMOVE TO BE ABLE TO START FROM SCRATCH
     std::cout <<"Disk_PUSH\n";
     std::string reply;
     Volumes dc(true);
@@ -251,5 +260,69 @@ int main ( int argc, char* argv[] )
       std::cout << "Exception was caught:" << e.description() << "\n";
       return;
     }  
+*/
+  }
 
+
+
+  // -------------------------------------------------------------------
+  // Get_Arguments 
+  // -------------------------------------------------------------------
+  void get_arguments( int argc, char **argv ) {
+
+    int index;
+    int c;
+    opterr = 0;
+
+    while ((c = getopt (argc, argv, "a:r:shv")) != -1) 
+      switch (c) {   
+        case 'h':
+          printf("%s: [options]\n", argv[0]);
+          printf(" options:\n");
+          printf("   -a  aquire a disk\n");
+          printf("   -r  release a disk\n");
+          printf("   -s  print logs to screen\n");
+          printf("   -h  print this help menu\n");
+          printf("   -v  version number\n");
+          exit (0);
+        case 'v':
+          printf("volumesd-client version: %i.%i.%i\n", 
+                  CLIENT_MAJOR_VERSION, CLIENT_MINOR_VERSION, CLIENT_PATCH_VERSION
+          );
+          exit (0);
+        case 's':
+          _onscreen = true;
+           break;
+        case 'a':
+          diskAcquireRequest = true;
+          mountPoint = optarg;
+          break;
+        case 'r':
+          diskReleaseRequest = true;
+          mountPoint = optarg;
+          break;
+        case '?':
+          if (optopt == 'a'){
+            fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+            fprintf (stderr, "use -h for help.\n");
+          }else if (optopt == 'r'){
+            fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+            fprintf (stderr, "use -h for help.\n");
+          }else if (isprint (optopt)){
+            fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+            fprintf (stderr, "use -h for help.\n");
+          }else{
+            fprintf (stderr, "Unknown option character `\\x%x'.\n", optopt);
+            fprintf (stderr, "use -h for help.\n");
+          }
+          exit(1);
+        default:
+          exit(0); 
+      }
+
+    for (index = optind; index < argc; index++){
+      printf ("Non-option argument %s\n", argv[index]);
+      fprintf (stderr, "use -h for help.\n");
+      exit(1);
+    }
   }
