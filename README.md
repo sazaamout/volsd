@@ -8,23 +8,41 @@
 
 The system consist of the following components:
   1. Volumesd.
-  - Process "DiskAcquireRequest" from clients (EC2 Instances)
-  - Process "DiskReleaseRequest" from clients
-  - Process all of the administration request such as (list volumes, list volume status, etc.) 
-  - maintains information about all of the created volumes such as status, mounting point, whether is mounted locally or at a remote server, and volume Id.
-  - making snapshots periodically for the target file system.
-  - Ensuring that we have the required number of disks at all time.
+  -- Process "DiskAcquireRequest" from clients (EC2 Instances)
+  -- Process "DiskReleaseRequest" from clients
+  -- Process all of the administration request such as (list volumes, list volume status, etc.) 
+  -- maintains information about all of the created volumes such as status, mounting point, whether is mounted locally or at a remote server, and volume Id.
+  -- making snapshots periodically for the target file system.
+  -- Ensuring that we have the required number of disks at all time.
   2. Volumesd-sync.
-  - syncing all EBS volumes together whether they are mounted locally or mounted in a another ec2 instance. 
-  - process the push and delete request from client 
-  - process the sync request issued by Manager to sync a newly created volume.
+  -- syncing all EBS volumes together whether they are mounted locally or mounted in a another ec2 instance. 
+  -- process the push and delete request from client 
+  -- process the sync request issued by Manager to sync a newly created volume.
   3. Volumesd-client.
-  - This program must start when an instance bootup for the first time. It will send a DiskRequest to the *volumesd* to acquire a volume. The *volumesd* will detach a volume and send it that volume's id to the client. The client will mount the acquired volume As soon as it receives the volume Id.
-  - When the instance is terminated, the client program will release the mounted volume and send a "DiskRelease" message to the *volumesd* which in turn will remove that volume from the disks list.
+  -- This program must start when an instance bootup for the first time. It will send a DiskRequest to the *volumesd* to acquire a volume. The *volumesd* will detach a volume and send it that volume's id to the client. The client will mount the acquired volume As soon as it receives the volume Id.
+  -- When the instance is terminated, the client program will release the mounted volume and send a "DiskRelease" message to the *volumesd* which in turn will remove that volume from the disks list.
 
 # Main features #
+## Installation ##
+  1. clone the project
+  2. create a build directory anywhere you want. I perfer creating the build directory inside the root directory of the project
+  3. inside the buid directory, do the following
+  ```
+  cmake /path/to/project/root/dir
+  ```
+  4. make; make install
+
+## Using Volumesd ##
+  type the following commands:
+  ```
+  $> volumesd [-c /path/to/config/file] [-s]
+  $> volumesd-sync [-c /path/to/config/file] [-s]
+  ```
+## How to run the Volumesd-client? ##
+  the client program (executable/binary) have to be part of the EC2 image. You can wither install it
+  and save the image. Or you can put it on an s3 bucket and download to the instane being created 
+  using the user-data. 
   
-# How to install and use Volumesd #
 
 # Dependencies And System Requirements #
   The following packages are required to be installed on the machine:
@@ -34,25 +52,6 @@ The system consist of the following components:
 
   *Note: This program is tested on a centos 6.x EC2 Instance (t1.small)
 
-# Installation #
-  1. clone the project
-  2. create a build directory anywhere you want. I perfer creating the build directory inside the root directory of the project
-  3. inside the buid directory, do the following
-  ```
-  cmake /path/to/project/root/dir
-  ```
-  4. make; make install
-
-# How to run it? #
-  type the following commands:
-  ```
-  $> volumesd [-c /path/to/config/file] [-s]
-  $> volumesd-sync [-c /path/to/config/file] [-s]
-  ```
-# How to run the Volumesd-client? #
-  the client program (executable/binary) have to be part of the EC2 image. You can wither install it
-  and save the image. Or you can put it on an s3 bucket and download to the instane being created 
-  using the user-data. 
 
 # Future work #
   - Testing it on other linux operating systems
