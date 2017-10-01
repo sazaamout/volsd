@@ -1,6 +1,4 @@
-# Overview #
-
-## Volumesd (vold) ##
+# Volumesd (vold) #
 
   *Volumesd* is a solution that replaces any type of centralized NAS/SAN storage when using Amazon Web Services. Using any type of cloud NAS that serves many webservers in an Amazon Autoscaling group will introduce latency to the client. Latency is due to the fact that data have to travelling via the network from the NAS/SAN storage to the web server that is processing the client request. The only way to reduce the latency when using such architecture, is to purchase stronger EC2 instance which could cost a lot of money.
   
@@ -13,7 +11,7 @@ The system consist of the following components:
   2. Volumesd-sync.
   3. Volumesd-client.
 
-### 1. Volumesd ### 
+## 1. Volumesd ## 
   - Process "DiskRequest" from clients 
   - Process "DiskRelease" from clients
   - Process all of the administration request such as (list volumes, list volume status, etc.) 
@@ -21,14 +19,18 @@ The system consist of the following components:
   - making snapshots periodically for the target file system.
   - Ensuring that we have the required number of disks at all time.
 
-### 2. Volumesd-sync ###
+## 2. Volumesd-sync ##
   - syncing all EBS volumes together whether they are mounted locally or mounted in a another ec2 instance. 
   - process the push and delete request from client 
   - process the sync request issued by Manager to sync a newly created volume.
 
-### 3. Volumesd-client ### 
+## 3. Volumesd-client ## 
   - This program must start when an instance bootup for the first time. It will send a DiskRequest to the *volumesd* to acquire a volume. The *volumesd* will detach a volume and send it that volume's id to the client. The client will mount the acquired volume As soon as it receives the volume Id.
   - When the instance is terminated, the client program will release the mounted volume and send a "DiskRelease" message to the *dispatcher* which in turn will remove that volume from the disks list.
+
+# Main features #
+  
+# How to install and use Volumesd #
 
 # Dependencies And System Requirements #
   The following packages are required to be installed on the machine:
