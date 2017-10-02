@@ -24,11 +24,14 @@ bool diskAcquireRequest = false;
 bool diskReleaseRequest = false;
 bool _onscreen          = false;
 std::string  mountPoint;
+int _loglevel = 3;
+
 // -----------------------------------------------------------------------------
 // FUNCTIONS PROTOTYPE
 // -----------------------------------------------------------------------------
-int  mount_vol(std::string volume, std::string mountPoint, Logger& logger);
-bool disk_acquire();
+int  mount_vol(Volumes &volumes, std::string t_volumeId, std::string t_mountPoint, Logger& logger);
+bool disk_acquire(Volumes &volumes);
+
 void disk_release(std::string mountPoint);
 void disk_push(std::string mountPoint);
 
@@ -47,15 +50,16 @@ int main ( int argc, char* argv[] )
     return 1;
   }
   get_arguments( argc, argv );
-    
-  std::string volume, output;
   
   // Collect instance information
   instance_id = utility::get_instance_id(); 
-      
+  std::cout << "1\n";
+  Volumes volumes;
+  volumes.set_logger_att ( _onscreen, "/var/log/messages", _loglevel );
+  std::cout << "2\n";
   if ( diskAcquireRequest ) {
     std::cout << "diskAcquire\n";
-    if (!disk_acquire()){
+    if (!disk_acquire(volumes)){
       return 1; // exit with error
     }
   }
@@ -75,7 +79,7 @@ int main ( int argc, char* argv[] )
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // DISK_REQUEST FUNCTION
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  bool disk_acquire() {
+  bool disk_acquire(Volumes &volumes) {
     
     Logger logger(_onscreen, "/var/log/messages", 3);
     // ----------------------------------------------
@@ -86,7 +90,7 @@ int main ( int argc, char* argv[] )
     try {
       std::cout << "Connecting to Port 90000\n"; 
       logger.log("info", "", "volumesd-client", 0, "connecting to port:[9000]");
-      ClientSocket client_socket ( "10.2.1.30", 9000 );
+      ClientSocket client_socket ( "10.2.1.147", 9000 );
       std::string msg, ack;
 
       try {
@@ -131,7 +135,8 @@ int main ( int argc, char* argv[] )
           return false;
 
         }else {
-          int res = mount_vol(reply, mountPoint, logger);
+          // At this point, volumesd server have sent us the volumes Id
+          int res = mount_vol(volumes, reply, mountPoint, logger);
           // chcek if mount was successfyl. If not, return Failed so disk status can be 
           // set back to idle
           if (!res) {
@@ -157,42 +162,68 @@ int main ( int argc, char* argv[] )
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // MOUNT_VOL FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  int mount_vol(std::string volume, std::string mountPoint, Logger& logger) {
-    /* REMOVE TO BE ABLE TO START FROM SCRATCH
-    std::string output;
-        
-    // TODO: fix this. passing the path here does not have effect since we are going to use a function that does not need that path
-    // that fynction take v startuct 
-    Volumes dc(true, "asdfasdf", "asdfasdf");
-        
-    int transaction = utility::get_transaction_id();
-        
-    utility::Volume v;
-        
-    v.id = volume;
-        
-    // check if mount point have "/"
-    if ( mountPoint[mountPoint.length()-1] != '/' ) {
+  int mount_vol(Volumes &volumes, std::string t_volumeId, std::string t_mountPoint, Logger& logger) {
+    
+    // -----------------------------------------------------------------------------------------------   
+    // 1) Prepare disk information.
+    //------------------------------------------------------------------------------------------------
+  
+    // get a device. 
+    logger.log("info", "", "volumesd-client", 0, "allocating a device.");
+    std::string device = volumes.get_device();
+    logger.log("info", "", "volumesd-client", 0, "device allocated:[" + device + "]");
+    
+    std::string mountPoint = t_mountPoint;
+    if ( mountPoint[mountPoint.length() - 1] != '/' ){
       mountPoint.append("/");
-    }
-    v.mountPoint = mountPoint;
-    v.device = utility::get_device(); 
-        
-    // really there is not need for these varaibles
-    v.status = "inprogress";
-    v.attachedTo = "localhost";
-                
-    if (!dc.ebsvolume_attach(v, instance_id, transaction, logger))
-      return 0;
+    } 
+    logger.log("info", "", "volumesd-client", 0, "allocating mounting point:[" + mountPoint + "]");
+    
+    
+    // -----------------------------------------------------------------   
+    // 2) Attach Volume
+    // --------------------------------------------------------------- 
+    logger.log("info", "", "volumesd-client", 0, "attaching volume " + t_volumeId);
+    if ( !volumes.attach(t_volumeId, device, instance_id, 0 ) ){
+      logger.log("error", "", "volumesd-client", 0, "FAILED to attaching new disk to localhost. Removing  from AWS space");
       
+      if (!volumes.del(t_volumeId, 0)){
+        logger.log("error", "", "volumesd-client", 0, "FAILED to delete volume from AWS space");
+      }
+      logger.log("info", "", "volumesd-client", 0, "volume was removed from AWS space");
+      logger.log("debug", "", "volumesd-client", 0, "removing device");
+      return 0;
+    }
+    logger.log("info", "", "volumesd-client", 0, "volume was attached successfully");
+
+    // this sleep is needed since Amazon takes time to attach the volume
     sleep(5);
     
-    if (!dc.ebsvolume_mount(v, instance_id, transaction, logger)){
-      dc.ebsvolume_detach(v, transaction, logger);
-      dc.ebsvolume_delete(v, transaction, logger);
-      return 0;
+    // -----------------------------------------------------------------   
+    // 3) mount Volume
+    // --------------------------------------------------------------- 
+    logger.log("info", "", "volumesd-client", 0, "mounting volume into localhost");
+    int retry=0;
+    bool mounted = false;
+    while (!mounted) {
+      if ( !volumes.mount(t_volumeId, mountPoint, device, 0) ) {
+        logger.log("info", "", "volumesd-client", 0, "FAILED to mount new volume. Retry");
+      } else {
+        logger.log("info", "", "volumesd-client", 0, "new volume was mounted successfully");
+        mounted = true;
+      }
+      
+      if (retry == 5) {
+        logger.log("error", "", "volumesd-client", 0, "FAILED to mount new volume to localhost. Detaching...");
+        if (!volumes.detach(t_volumeId, 0))
+          logger.log("error", "", "volumesd-client", 0, "FAILED to detach.");
+    
+          logger.log("info", "", "volumesd-client", 0, "removing device");
+          return 0;
+      }
+      retry++;
     }
-        */
+
     return 1;
   }
 

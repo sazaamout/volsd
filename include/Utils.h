@@ -97,7 +97,6 @@ namespace utility
 	int exec1(std::string& results, std::string cmd);
 	std::string get_instance_id();
 	std::string randomString();
-	std::string get_device();
 	
   
 	int load_configuration(Configuration &conf, std::string conf_file);

@@ -156,43 +156,6 @@ namespace utility
     return rs;
   }
 
-  
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // LOGGER FUNCTION
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  std::string get_device() {
-    // get device already been used locally.
-    std::string str;
-    
-    exec(str, "lsblk | grep -oP xvd[a-z]*");
-    clean_string(str);
-    
-    std::string word;
-    char c1, c2;
-    bool flag = false; // assumes is taken
-    
-    for (int i=98; i<=122; i++){
-      c1 = i;
-      std::stringstream ss(str);
-      //chcek if this char is taken
-      flag = false;
-
-      for (int ii = 0; ss >> word; ii++){
-        // get last char
-        c2 = word[word.length()-1];
-        if (c1 == c2) 
-        flag = true;
-      }
-
-      if (!flag){
-        break;
-      }
-      }
-      word[word.length()-1] = c1;
-      
-      return word;
-    }
-
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // PRINT_CONFIGURATION FUNCTION

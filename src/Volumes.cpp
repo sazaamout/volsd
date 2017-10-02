@@ -16,6 +16,7 @@ Volumes::Volumes ( std::string rmd, std::string volumeFile, int idleVolumes ){
 }
 
 Volumes::Volumes( std::string rmd, std::string volumeFile ){
+  // NOT USED, REMOVE
   _rootMountDirectory = rmd;
   _volumeFile = volumeFile;
 }
@@ -1107,12 +1108,7 @@ std::string Volumes::get_device() {
   // get device already been used locally.
   std::string str;
   utility::exec(str, "lsblk | grep -oP xvd[a-z]*");
-  str.append(" ");
-
-  // get the devices from diskFile
-
   utility::clean_string(str);
-
 
   std::string word;
   char c1, c2;
@@ -1128,19 +1124,18 @@ std::string Volumes::get_device() {
       // get last char
       c2 = word[word.length()-1];
       if (c1 == c2)
-        flag = true;
+      flag = true;
     }
 
     if (!flag){
       break;
     }
   }
+
   word[word.length()-1] = c1;
 
-  //std::cout << "  >> List of Devices:[" << str << "]\n";
-  //std::cout << "  >> Seleclted device:[" << word << "]\n";
   return word;
-  }
+}
 
 
 /* =============================================================================

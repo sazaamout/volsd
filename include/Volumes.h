@@ -85,7 +85,8 @@ class Volumes
     
     int volume_exist( const std::string volId );
     
-    bool ebsvolume_setstatus(std::string , std::string, std::string, std::string, std::string, std::string, int transactionId, Logger& logger );
+    bool ebsvolume_setstatus(std::string , std::string, std::string, std::string, std::string, 
+                             std::string, int transactionId, Logger& logger );
     
     // m_volumes modifiers function
     int update ( const std::string volumeId, const std::string key, const std::string value , const int transactionId);
@@ -103,17 +104,19 @@ class Volumes
     void ebsvolume_print();
     
     int remove_disk(std::string vol);
-    int release_volume(std::string& v, std::string instance_id, std::string mountPoint, bool d, int transactionId, Logger& logger);
+    int release_volume(std::string& v, std::string instance_id, std::string mountPoint, bool d, 
+                       int transactionId, Logger& logger);
     
     int release (std::string &volumeId, int transactionId);
-    int acquire( const std::string t_targetFileSystem, const std::string t_snapshotId, const std::string t_rootMountsFolder, const std::string t_instanceId, const int t_transaction );
+    int acquire( const std::string t_targetFileSystem, const std::string t_snapshotId, 
+                 const std::string t_rootMountsFolder, const std::string t_instanceId, 
+                 const int t_transaction );
     
     int remove_mountpoint(std::string mp, int transactionId, Logger& logger);
     int wait(std::string op, utility::Volume volume, int transactionId, Logger& logger);
 	
 	// -----------------------------------
 	// move this to utililty functions
-    std::string get_devices();
     std::string get_device();
     std::string get_device(std::vector<std::string>& list);
     std::string create_filesystem(std::string snapshotId);  

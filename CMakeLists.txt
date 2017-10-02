@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 2.8.9)
 
-project(volumeDispatcher)
+project(volsd)
 
 # set some global variables
 set(EXE_INSTALL_DIR ${CMAKE_BINARY_DIR}/install/bin)
-set(CFG_INSTALL_DIR ${CMAKE_BINARY_DIR}/install/etc/volumeDispatcher)
+set(CFG_INSTALL_DIR ${CMAKE_BINARY_DIR}/install/etc/volsd)
 
 # set the version
 set(DISPATCHER_MAJOR_VERSION 1)
@@ -60,6 +60,6 @@ install(TARGETS volumesd-client      DESTINATION ${EXE_INSTALL_DIR} COMPONENT bi
 install(FILES   conf/dispatcher.cfg  DESTINATION ${CFG_INSTALL_DIR} COMPONENT config  )
 
 message("--------------------------------------------------")
-message("Binaries will be placed in ${EXE_INSTALL_DIR}")
-message("Configurations files will be placed in ${CFG_INSTALL_DIR}")
+message("Binaries are installed in in : ${EXE_INSTALL_DIR}")
+message("Conf files will be placed in : ${CFG_INSTALL_DIR}")
 message("--------------------------------------------------")

@@ -29,6 +29,10 @@ Logger
 - Modify Logger class to accept localhost_name, program_name in the constructor to avoid typing these everytime
 
 
+client:
+- make a conf file and put on it the ip of the server everything else
+
+
 DONE:
 - Reimplement the mount function to use <sys/mount.h> library (done)
 - ensure idele volumes are mounted at the begining of the program (done)
