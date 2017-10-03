@@ -113,7 +113,8 @@ int main ( int argc, char* argv[] )
     // 2) Connect to the port and start reciving
     // ----------------------------------------------
     try {
-      logger.log("info", "", "volsd-client", 0, "connecting to server via communication port:[" + reply + "]");
+      logger.log("info", "", "volsd-client", 0, "connecting to server via communication port:[" + 
+                 reply + "]");
 
       sleep(2);
       ClientSocket client_socket ( "10.2.1.147", utility::to_int(reply) );
@@ -165,7 +166,8 @@ int main ( int argc, char* argv[] )
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // MOUNT_VOL FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  int mount_vol(Volumes &volumes, std::string t_volumeId, std::string t_mountPoint, Logger& logger) {
+  int mount_vol( Volumes &volumes, std::string t_volumeId, std::string t_mountPoint, 
+                 Logger& logger) {
     
     // -----------------------------------------------------------------------------------------------   
     // 1) Prepare disk information.
@@ -185,7 +187,8 @@ int main ( int argc, char* argv[] )
     // --------------------------------------------------------------- 
     logger.log("info", "", "volsd-client", 0, "attaching volume " + t_volumeId);
     if ( !volumes.attach(t_volumeId, device, instance_id, 0 ) ){
-      logger.log("error", "", "volsd-client", 0, "FAILED to attaching new disk to localhost. Removing  from AWS space");
+      logger.log("error", "", "volsd-client", 0, 
+                 "FAILED to attaching new disk to localhost. Removing  from AWS space");
       
       if (!volumes.del(t_volumeId, 0)){
         logger.log("error", "", "volsd-client", 0, "failed to delete volume from AWS space");
@@ -213,7 +216,8 @@ int main ( int argc, char* argv[] )
       }
       
       if ((retry == 5) && (!mounted)){
-        logger.log("error", "", "volsd-client", 0, "failed to mount new volume to localhost. Detaching...");
+        logger.log("error", "", "volsd-client", 0, 
+                   "failed to mount new volume to localhost. Detaching...");
 
         // detach volumes
         if (!volumes.detach(t_volumeId, 0)){
@@ -221,7 +225,8 @@ int main ( int argc, char* argv[] )
           return 0;
         } else {
           sleep(5);
-          logger.log("error", "", "volsd-client", 0, "detaching volume was successfult. Removing from Amazon space");
+          logger.log("error", "", "volsd-client", 0, 
+                     "detaching volume was successfult. Removing from Amazon space");
           // if detach successful, then delete the volume.
           if (!volumes.del(t_volumeId, 0)){
             logger.log("error", "", "volsd-client", 0, "failed to delete volume from Amazon space");
@@ -253,22 +258,20 @@ int main ( int argc, char* argv[] )
     std::string reply;
     
     try {
-      logger.log("info", "", "volsd-client", 0, "connecting to port:[" + reply + "]");
-      ClientSocket client_socket ( "10.2.1.147", 9000 );
       
       if (!volumes.release_volume( volume, instance_id, mountPoint, 0 )){
         logger.log("info", "", "volsd-client", 0, "failed to release volume");
         return 0;
       }
       
-      
-                             
+      logger.log("info", "", "volsd-client", 0, "connecting to port:[" + reply + "]");
+      ClientSocket client_socket ( "10.2.1.147", 9000 );                       
                              
       std::string request = "DiskRelease:" + volume;
     
       try {
-      client_socket << request;
-      client_socket >> reply;
+        client_socket << request;
+        client_socket >> reply;
       } 
       catch ( SocketException& ) {
         return 0;

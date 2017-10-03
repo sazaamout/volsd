@@ -3,9 +3,9 @@
 
 using namespace utility;
 
-/* =============================================================================
- * Class Constructor
- * =============================================================================*/
+// =================================================================================================
+// Class Constructor
+// =================================================================================================
 Volumes::Volumes ( std::string rmd, std::string volumeFile, int idleVolumes ){
   
   _rootMountDirectory = rmd;
@@ -15,46 +15,56 @@ Volumes::Volumes ( std::string rmd, std::string volumeFile, int idleVolumes ){
   load();
 }
 
+// =================================================================================================
+// Class Constructor 
+// =================================================================================================
 Volumes::Volumes( std::string rmd, std::string volumeFile ){
   // NOT USED, REMOVE
   _rootMountDirectory = rmd;
   _volumeFile = volumeFile;
 }
 
-/* =============================================================================
- * Class Constructor
- * =============================================================================*/
+// =================================================================================================
+// Class Constructor
+// =================================================================================================
 Volumes::Volumes() {
   
 }
 
-/* =============================================================================
- * Class Destractor
- * =============================================================================*/
+// =================================================================================================
+// Class desstructor
+// =================================================================================================
 Volumes::~Volumes() {
   delete logger;
 }
 
 
-/* =============================================================================
- * Set Logger Attribute
- * =============================================================================*/
+// =================================================================================================
+// Function: Set Logger att
+// =================================================================================================
 void Volumes::set_logger_att( bool toScreen, std::string logFile, int loglevel ) {
   logger = new Logger(toScreen, logFile, loglevel);
 }
 
 
-/* =============================================================================
- * Function: EBSVOLUME_CREATE
- * =============================================================================*/
-int Volumes::create( std::string &t_volumeId, const std::string t_latestSnapshot, const int t_transactionId ){
-
+// =================================================================================================
+// Function: Create
+// =================================================================================================
+int Volumes::create( std::string &t_volumeId, const std::string t_latestSnapshot, 
+                     const int t_transactionId ){
   // create a volume from latest snapshot
   std::string newVolume;
   
-  int res = utility::exec(newVolume, "aws ec2 create-volume --region us-east-1 --availability-zone us-east-1a --snapshot-id " + t_latestSnapshot + " --volume-type gp2 --query VolumeId --output text");
+  int res = utility::exec (
+            newVolume, 
+            "aws ec2 create-volume --region us-east-1 --availability-zone us-east-1a --snapshot-id " 
+            + t_latestSnapshot + " --volume-type gp2 --query VolumeId --output text"
+            );
+  
   if (!res){
-    logger->log("info", "", "volsd", t_transactionId, "failed to create volume, ExitCode(" + utility::to_string(res) + "). retry" + t_latestSnapshot + "]", "create");
+    logger->log("info", "", "volsd", t_transactionId, 
+                "failed to create volume, ExitCode(" + utility::to_string(res) + "). retry" + 
+                t_latestSnapshot + "]", "create");
   }
   utility::clean_string(newVolume);
 
@@ -63,14 +73,16 @@ int Volumes::create( std::string &t_volumeId, const std::string t_latestSnapshot
   std::string status;
   sleep(2);
 
-  utility::exec(status, "aws ec2 describe-volumes --volume-ids " + newVolume + " --region us-east-1  --query Volumes[*].State --output text");
+  utility::exec(status, "aws ec2 describe-volumes --volume-ids " + newVolume + 
+                " --region us-east-1  --query Volumes[*].State --output text");
 
   while (!created){
     if (status.find("available") != std::string::npos){
       created = true;
 
     }else {
-      utility::exec(status, "aws ec2 describe-volumes --volume-ids " + newVolume + " --region us-east-1  --query Volumes[*].State --output text");
+      utility::exec(status, "aws ec2 describe-volumes --volume-ids " + newVolume + 
+                    " --region us-east-1  --query Volumes[*].State --output text");
     }
 
   }
@@ -81,25 +93,33 @@ int Volumes::create( std::string &t_volumeId, const std::string t_latestSnapshot
 }
 
 
-
+// =================================================================================================
+// Function: Attch
+// =================================================================================================
 int Volumes::attach( const std::string t_volumeId, const std::string t_device, 
                      const std::string t_instanceId, const int t_transcation ) {
-  
 
   int retry=0;
   std::string output;
   bool attached = false;
 
   while (!attached) {
-    int res = utility::exec(output, "/usr/bin/aws ec2 attach-volume --volume-id " + t_volumeId + " --instance-id " + t_instanceId + " --device /dev/" + t_device + " --region us-east-1");
+    int res = utility::exec(
+              output, "/usr/bin/aws ec2 attach-volume --volume-id " + t_volumeId +
+              " --instance-id " + t_instanceId + " --device /dev/" + 
+              t_device + " --region us-east-1");
+              
     utility::clean_string(output);
     if (retry == 30) {
-      logger->log("error", "", "volsd", t_transcation, "failed to attach volume. ExitCode(" + utility::to_string(res) + ").", "attach");
+      logger->log("error", "", "volsd", t_transcation, "failed to attach volume. ExitCode(" + 
+                  utility::to_string(res) + ").", "attach");
       return 0;
     }
     if (!res) {
-      logger->log("debug", "", "volsd", t_transcation, "attching volume FAILED. ExitCode(" + utility::to_string(res) + ") retry..." , "attach");
-      logger->log("error", "", "volsd", t_transcation, "AWSERROR:[" + output + "]", "ebsvolume_attach");
+      logger->log("debug", "", "volsd", t_transcation, "attching volume FAILED. ExitCode(" + 
+                  utility::to_string(res) + ") retry..." , "attach");
+      logger->log("error", "", "volsd", t_transcation, "AWSERROR:[" + output + 
+                  "]", "ebsvolume_attach");
       retry++;
     } else {
       attached = true;
@@ -115,11 +135,9 @@ int Volumes::attach( const std::string t_volumeId, const std::string t_device,
 }
 
 
-/* =============================================================================
- * Function: EBSVOLUME_MOUNT
- * =============================================================================*/
-
-
+// =================================================================================================
+// Function: Mount
+// =================================================================================================
 int Volumes::mount( const std::string t_volumeId, const std::string t_mountPoint, 
                     const std::string t_device, const int t_transactionId ) {
   
@@ -127,46 +145,55 @@ int Volumes::mount( const std::string t_volumeId, const std::string t_mountPoint
   if (!utility::is_exist(t_mountPoint)){
     // create the directory
     if (!utility::folder_create(t_mountPoint)) {
-      logger->log("debug", "", "volsd", t_transactionId, "cannot not create mountpoint:[" + t_mountPoint + "]", "mount");
+      logger->log("debug", "", "volsd", t_transactionId, "cannot not create mountpoint:[" + 
+                  t_mountPoint + "]", "mount");
       return 0;
     }
   } 
   
   // 2. check if it is used by another filesystem
   if (utility::is_mounted(t_mountPoint)) {
-    logger->log("debug", "", "volsd", t_transactionId, "mountpoint cannot be used. It already been used by another filesystem", "mount");
+    logger->log("debug", "", "volsd", t_transactionId, 
+                "mountpoint cannot be used. It already been used by another filesystem", "mount");
     return 0;
   } 
   
   // 3. since it is exist, check if its already have data
   if (!utility::folder_is_empty(t_mountPoint)) {
-    logger->log("debug", "", "volsd", t_transactionId, "mountpoint cannot be used. it has some data", "mount");
+    logger->log("debug", "", "volsd", t_transactionId, 
+                "mountpoint cannot be used. it has some data", "mount");
     return 0;
   }
   
   // all good, the start to mount the filesystem
-  logger->log("debug", "", "volsd", t_transactionId, "mounting volume:[" + t_volumeId + "] on device:[" + t_device + "] on mountPoint:[" + t_mountPoint + "]", "mount");
+  logger->log("debug", "", "volsd", t_transactionId, 
+              "mounting volume:[" + t_volumeId + "] on device:[" + t_device + "] on mountPoint:[" + 
+              t_mountPoint + "]", "mount");
+              
   std::string output;
   if (!utility::mountfs( output, t_mountPoint, "/dev/"+t_device)){
 	  logger->log("error", "", "volsd", t_transactionId, "failed to mount volume. " + output, "mount");
     return 0;
   }
   
-  
-  
   return 1;
 }
 
 
-
+// =================================================================================================
+// Function: Detach
+// =================================================================================================
 int Volumes::detach( const std::string t_idleVolId, const int t_transactionId ){
   
   std::string output;
-  logger->log("debug", "", "volsd", t_transactionId, "detaching EBS Volume:[" + t_idleVolId + "] from instance", "");
+  logger->log("debug", "", "volsd", t_transactionId, "detaching EBS Volume:[" + 
+              t_idleVolId + "] from instance", "");
 
-  int res = utility::exec(output, "/usr/bin/aws ec2 detach-volume --volume-id " + t_idleVolId + " --region us-east-1");
+  int res = utility::exec(output, "/usr/bin/aws ec2 detach-volume --volume-id " + 
+            t_idleVolId + " --region us-east-1");
   if (!res)   {
-    logger->log("debug", "", "volsd", t_transactionId, "detaching volume[" + t_idleVolId + "] failed. Exit(" + utility::to_string(res) + ")", "ebsvolume_detach");
+    logger->log("debug", "", "volsd", t_transactionId, "detaching volume[" + t_idleVolId + 
+                "] failed. Exit(" + utility::to_string(res) + ")", "ebsvolume_detach");
     return 0;
   }
 
@@ -175,25 +202,33 @@ int Volumes::detach( const std::string t_idleVolId, const int t_transactionId ){
 
   // wait untill ready
   while (!ready){
-    int res = utility::exec(output, "/usr/bin/aws ec2 describe-volumes --volume-id " + t_idleVolId + " --query Volumes[*].State --output text --region us-east-1");
+    int res = utility::exec(output, "/usr/bin/aws ec2 describe-volumes --volume-id " + 
+                            t_idleVolId + 
+                            " --query Volumes[*].State --output text --region us-east-1");
     utility::clean_string(output);
 
     if (retry == 15){
-      logger->log("error", "", "volsd", t_transactionId, "volume:[" + t_idleVolId + "] could not detached. ExitCode(" + utility::to_string(res) + ")", "ebsvolume_detach");
+      logger->log("error", "", "volsd", t_transactionId, "volume:[" + t_idleVolId + 
+                  "] could not detached. ExitCode(" + utility::to_string(res) + ")", 
+                  "ebsvolume_detach");
       return 0;
     }
 
     if (!res){
-      logger->log("error", "", "volsd", t_transactionId, "cannot describe volume", "ebsvolume_detach");
-      logger->log("error", "", "volsd", t_transactionId, "AWSERROR:[" + output + "]", "ebsvolume_detach");
+      logger->log("error", "", "volsd", t_transactionId, "cannot describe volume", 
+                  "ebsvolume_detach");
+      logger->log("error", "", "volsd", t_transactionId, "AWSERROR:[" + output + 
+                  "]", "ebsvolume_detach");
       retry++;
     }
     
     if (output.find("in-use") != std::string::npos){
-      logger->log("debug", "", "volsd", t_transactionId, "volume:[" + t_idleVolId + "] is 'in-use'. retry ...", "ebsvolume_detach");
+      logger->log("debug", "", "volsd", t_transactionId, "volume:[" + t_idleVolId + 
+                  "] is 'in-use'. retry ...", "ebsvolume_detach");
       retry++;
     } if (output.find("available") != std::string::npos){
-      logger->log("debug", "", "volsd", t_transactionId, "volume[" + t_idleVolId + "] was detached Successfuly", "ebsvolume_detach");
+      logger->log("debug", "", "volsd", t_transactionId, "volume[" + t_idleVolId + 
+                  "] was detached Successfuly", "ebsvolume_detach");
       ready = true;
       return 1;
     }
@@ -205,20 +240,28 @@ int Volumes::detach( const std::string t_idleVolId, const int t_transactionId ){
 }
  
 
+// =================================================================================================
+// Function: umount
+// =================================================================================================
 bool Volumes::umount( const std::string t_volumeId, const std::string t_mountPoint, const int t_transactionId ){
   std::string output;
-  logger->log("debug", "", "volsd", t_transactionId, "umount volume:[" + t_volumeId + "]", "umount");
+  logger->log("debug", "", "volsd", t_transactionId, "umount volume:[" + t_volumeId + 
+              "]", "umount");
   
   if (!utility::umountfs( output, t_mountPoint)) {
-    logger->log("debug", "", "volsd", t_transactionId, "failed to umount volume:[" + t_volumeId + "]", "umount");
+    logger->log("debug", "", "volsd", t_transactionId, "failed to umount volume:[" + t_volumeId + 
+                "]", "umount");
   }
   
-  logger->log("debug", "", "volsd", t_transactionId, "umount volume:[" + t_volumeId + "] was successful", "umount");
+  logger->log("debug", "", "volsd", t_transactionId, "umount volume:[" + t_volumeId + 
+              "] was successful", "umount");
   return true;
 }
 
 
-
+// =================================================================================================
+// Function: Del
+// =================================================================================================
 int Volumes::del(const std::string t_volumeId, int t_transactionId){
 
   std::string output;
@@ -227,14 +270,17 @@ int Volumes::del(const std::string t_volumeId, int t_transactionId){
   bool deleted = false;
 
   while (!deleted) {
-    int res = utility::exec( output, "aws ec2 delete-volume --volume-id " + t_volumeId + " --region us-east-1");
+    int res = utility::exec( output, "aws ec2 delete-volume --volume-id " + t_volumeId + 
+                             " --region us-east-1");
     utility::clean_string(output);
     if (retry == 15) {
-      logger->log("error", "", "volsd", t_transactionId, "volume failed to delete, Exit(" + utility::to_string(res) + ").", "del");
+      logger->log("error", "", "volsd", t_transactionId, "volume failed to delete, Exit(" + 
+                  utility::to_string(res) + ").", "del");
       return 0;
     }
     if (!res)   {
-      logger->log("debug", "", "volsd", t_transactionId, "volume failed to delete, Exit(" + utility::to_string(res) + "). retry...", "del");
+      logger->log("debug", "", "volsd", t_transactionId, "volume failed to delete, Exit(" + 
+                   utility::to_string(res) + "). retry...", "del");
       logger->log("error", "", "volsd", t_transactionId, "AWSERROR:[" + output + "]", "del");
       retry++;
     } else {
@@ -249,9 +295,9 @@ int Volumes::del(const std::string t_volumeId, int t_transactionId){
 }
 
 
-/* =============================================================================
- * Function: Get Idle Volume
- * =============================================================================*/
+// =================================================================================================
+// Function: Get Idle Volume
+// =================================================================================================
 //bool Volumes::get_idle_volume(int &volumeIndex , int transactionId, Logger& logger) {
 int Volumes::get_idle_volume( int &idleVolumeIndex, const int transactionId ) {
   
@@ -274,9 +320,9 @@ int Volumes::get_idle_volume( int &idleVolumeIndex, const int transactionId ) {
 }
 
 
-/* =============================================================================
- * Function: Get Idle Number
- * =============================================================================*/
+// =================================================================================================
+// Function: get Idle Number
+// =================================================================================================
 int Volumes::get_idle_number() {
   
   int c =0;
@@ -288,51 +334,6 @@ int Volumes::get_idle_number() {
   return c;  
 }
 
-
-/* =============================================================================
- * Function: EBSVOLUME_LIST
- * =============================================================================*/
-// std::string Volumes::ebsvolume_list(std::string select) {
-std::string Volumes::ebsvolume_list(std::string select, std::string volumeFile) {
-
-  std::string str;
-  std::ifstream myFile;
-  std::string line;
-
-  myFile.open(volumeFile.c_str());
-
-  if (!myFile.is_open()) {
-    return "";
-  }
-
-  if ( select == "all") {
-    while (std::getline(myFile, line)) {
-      // get the whole line
-      str.append(line + "\n");
-    }
-  } else if ( select == "local") {
-    while (std::getline(myFile, line)) {
-      if ( line.find("localhost") != std::string::npos ) {
-  // get the id's only
-  std::stringstream ss(line);
-  std::string tmp_str;
-  ss >> tmp_str; ss >> tmp_str; ss >> tmp_str; ss >> tmp_str;
-  str.append(tmp_str + " ");
-      }
-    }
-  } else if ( select == "remote") {
-    while (std::getline(myFile, line)) {
-      if ( line.find("localhost") == std::string::npos ) {
-  // get the id's only
-  std::stringstream ss(line);
-  std::string tmp_str;
-  ss >> tmp_str; ss >> tmp_str; ss >> tmp_str;
-  str.append(tmp_str + " ");
-      }
-    }
-  }
-  return str;
-}
 
 bool Volumes::write_to_file( int transactionId ){
   // write back to file
@@ -360,10 +361,9 @@ bool Volumes::write_to_file( int transactionId ){
 }
 
 
-// -------------------------------------------------------------------------------------------------
+// =================================================================================================
 // Function: Remove
-// Used    : to remove a volumes from m_vectors
-// -------------------------------------------------------------------------------------------------
+// =================================================================================================
 int Volumes::remove ( const std::string t_volumeId, const int t_transactionId ){
   
   // delete volume
@@ -386,10 +386,9 @@ int Volumes::remove ( const std::string t_volumeId, const int t_transactionId ){
 }
 
 
-// -------------------------------------------------------------------------------------------------
+// =================================================================================================
 // Function: Add
-// Used    : to add a volumes to m_vectors
-// -------------------------------------------------------------------------------------------------
+// =================================================================================================
 int Volumes::add ( const utility::Volume t_volumes, const int t_transactionId ){
 	
   // add to m_vectors
@@ -409,10 +408,9 @@ int Volumes::add ( const utility::Volume t_volumes, const int t_transactionId ){
 }
 
 
-// -------------------------------------------------------------------------------------------------
-// Function: update
-// Used    : to update a volume in the m_vectors
-// -------------------------------------------------------------------------------------------------
+// =================================================================================================
+// Function: Update
+// =================================================================================================
 int Volumes::update ( const std::string t_volumeId, const std::string t_key, 
                       const std::string t_value,    const int t_transactionId){
 
@@ -427,7 +425,8 @@ int Volumes::update ( const std::string t_volumeId, const std::string t_key,
   }
 
   if (!found){
-    logger->log("debug", "", "volsd", t_transactionId, "could not find volume " + t_volumeId , "update");
+    logger->log("debug", "", "volsd", t_transactionId, 
+                "could not find volume " + t_volumeId , "update");
     return 0;
   }
   
@@ -450,23 +449,23 @@ int Volumes::update ( const std::string t_volumeId, const std::string t_key,
 }
 
 
-/* =============================================================================
- * Function: IS_EXIST
- * Description;
- *        Checks the mountpoint if exist or not. if not create it
- * =============================================================================*/
+// =================================================================================================
+// Function: Is Exist
+// =================================================================================================
 int Volumes::is_exist(std::string mountPoint, bool d, int transactionId, Logger& logger){
 
   std::string output;
   // test1: check and see if mountPoint exists
 
-  logger.log("debug", "", "volsd", transactionId, "checking If MountPoint:[" + mountPoint + "] exists" , "is_exist");
-  //int res = utility::exec(output, "ls " + mountPoint + " 2>/dev/null"); // return 0 for exist
+  logger.log("debug", "", "volsd", transactionId, 
+             "checking If MountPoint:[" + mountPoint + "] exists");
+
   int res = utility::exec(output, "ls " + mountPoint); // return 0 for exist
   // new code start here ------------
   // does not exist
   if (!res){
-    logger.log("debug", "", "volsd", transactionId, "mountPoint:[" + mountPoint + "] does not exist, creating ..." , "is_exist");
+    logger.log("debug", "", "volsd", transactionId, "mountPoint:[" + mountPoint + 
+               "] does not exist, creating ...");
 
     std::string cmd = "mkdir " + mountPoint;
     system(cmd.c_str());
@@ -474,12 +473,14 @@ int Volumes::is_exist(std::string mountPoint, bool d, int transactionId, Logger&
   }
   // Exist + empty = idle, ok to be used
   if ( (res) && (output.empty()) )  {
-    logger.log("debug", "", "volsd", transactionId, "mountPoint exists and good to be used." , "is_exist");
+    logger.log("debug", "", "volsd", transactionId, "mountPoint exists and good to be used.");
     return 0;
   }
   // exist + not empty, means it is used by a filesystem
   if ( (res) && (!output.empty()) )  {
-    logger.log("debug", "", "volsd", transactionId, "mountPoint exist but it is used by another filesystem. Exit(" + utility::to_string(res) + ")" , "is_exist");
+    logger.log("debug", "", "volsd", transactionId, 
+               "mountPoint exist but it is used by another filesystem. Exit(" + 
+              utility::to_string(res) + ")");
     return 1;
   }
 
@@ -487,52 +488,30 @@ int Volumes::is_exist(std::string mountPoint, bool d, int transactionId, Logger&
 }
 
 
-/* =============================================================================
- * Function: IS_USED
- * =============================================================================*/
+// =================================================================================================
+// Function: Is Used
+// =================================================================================================
 int Volumes::is_used(std::string mountPoint, bool d, int transactionId, Logger& logger){
   std::string output;
 
-  //if (d) std::cout << " Volumes(" << transactionId << ")::IS_USED:: Checking If mountPoint:[" << mountPoint << "] is used by another filesystem\n";
-  logger.log("debug", "", "volsd", transactionId, "checking If mountPoint:[" + mountPoint + "] is used by another filesystem" , "is_used");
+  logger.log("debug", "", "volsd", transactionId, 
+             "checking If mountPoint:[" + mountPoint + "] is used by another filesystem");
   int res = utility::exec(output, "grep -qs " + mountPoint + " /proc/mounts");
   // check if mountPoint is already used
   if (res) {
-    logger.log("error", "", "volsd", transactionId, "mountPoint is used by another filesystem. Exit(" + utility::to_string(res) + ")" , "is_used");
-    //if (d) std::cout << " volsd(" << transactionId << ")::IS_USED:: MountPoint:[" << mountPoint << "] is used by another filesystem. ExitCode(" << res << ")\n";
+    logger.log("error", "", "volsd", transactionId, 
+               "mountPoint is used by another filesystem. Exit(" + utility::to_string(res) + ")");
     return 1;
   }
 
-  //if (d) std::cout << " volsd(" << transactionId << ")::IS_USED:: MountPoint:[" << mountPoint << "] is available. ExitCode(" << res << ")\n";
-  logger.log("debug", "", "volsd", transactionId, "mountPoint is available." , "is_used");
+  logger.log("debug", "", "volsd", transactionId, "mountPoint is available.");
   return 0;
 }
 
 
-/* =============================================================================
- * Function: MK_FILESYSTEM
- * =============================================================================*/
-int Volumes::make_filesystem(std::string device, bool d) {
-  std::string output;
-  // test1: check and see if mountPoint exists
-  if (d) std::cout << " Disk::MAKE_FILESYSTEM: Making Filesystem on device:[" << device << "]\n";
-
-  //int res = utility::exec(output, "mkfs -t ext4 " + device + " 2>/dev/null"); // return 0 for exist
-  int res = utility::exec(output, "mkfs -t ext4 " + device); // return 0 for exist
-  if (!res) {
-    if (d) std::cout << " Disk::MAKE_FILESYSTEM: ExitCode:" << res << ". Failed to create a filesystem via mkfs exist\n";
-    return 0;
-  }
-  if (d) std::cout << " Disk::MAKE_FILESYSTEM: ExitCode:" << res << ". a filesystem was made via mkfs succesfully\n";
-  return 1;
-
-}
-
-
-/* =============================================================================
- * Function: RELEASE_VOLUME
- * =============================================================================*/
-
+// =================================================================================================
+// Function: RELEASE_VOLUME
+// =================================================================================================
 int Volumes::release_volume( std::string& v, std::string t_instanceId, std::string t_mountPoint, 
                              int t_transactionId ) {
 
@@ -554,7 +533,11 @@ int Volumes::release_volume( std::string& v, std::string t_instanceId, std::stri
 
   // 2. given the device, get the volume id.
   logger->log("info", "", "volsd", t_transactionId, "acquiring the volume's Amazon Id");
-  std::string cmd = "aws ec2 describe-instances --instance-id " + t_instanceId + " --query \"Reservations[*].Instances[*].BlockDeviceMappings[\?DeviceName==\'" + device + "\'].Ebs.VolumeId\" --output text --region us-east-1";
+  std::string cmd = "aws ec2 describe-instances --instance-id " + 
+                    t_instanceId + 
+                    " --query \"Reservations[*].Instances[*].BlockDeviceMappings[\?DeviceName==\'" + 
+                    device + "\'].Ebs.VolumeId\" --output text --region us-east-1";
+                    
   logger->log("debug", "", "volsd", t_transactionId, "Command: " + cmd);
   res = utility::exec(output,  cmd);
   if (!res) {
@@ -595,30 +578,32 @@ int Volumes::release_volume( std::string& v, std::string t_instanceId, std::stri
 }
 
 
-/* =============================================================================
- * Function: REMOVE_MOUNTPOINT
- * =============================================================================*/
+// =================================================================================================
+// Function: REMOVE_MOUNTPOINT
+// =================================================================================================
 int Volumes::remove_mountpoint(std::string mp, int transactionId, Logger& logger) {
   std::string output;
-  logger.log("debug", "", "volsd", transactionId, "removig mountpoint:[" + mp + "]", "remove_mountpoint");
+  logger.log("debug", "", "volsd", transactionId, "removig mountpoint:[" + mp + "]");
 
   int res = utility::exec(output, "rmdir " + mp );
 
   if (!res){
-    logger.log("error", "", "volsd", transactionId, "failed to removig mountpoint:[" + mp + "]. Exit(" + utility::to_string(res) + ")", "remove_mountpoint");
+    logger.log("error", "", "volsd", transactionId, "failed to removig mountpoint:[" + mp + 
+                "]. Exit(" + utility::to_string(res) + ")");
     return 0;
   }
 
-  logger.log("debug", "", "volsd", transactionId, "mountpoint:[" + mp + "] was removed Successfully", "remove_mountpoint");
+  logger.log("debug", "", "volsd", transactionId, "mountpoint:[" + mp + 
+            "] was removed Successfully");
 
   return 1;
 }
 
 
 
-/* =============================================================================
- * Function: GET_DEVICE
- * =============================================================================*/
+// =================================================================================================
+// Function: GET_DEVICE
+// =================================================================================================
 std::string Volumes::get_device() {
 
   // get device already been used locally.
@@ -654,9 +639,9 @@ std::string Volumes::get_device() {
 }
 
 
-/* =============================================================================
- * Function: GET_DEVICE
- * =============================================================================*/
+// =================================================================================================
+// Function: GET_DEVICE
+// =================================================================================================
 std::string Volumes::get_device(std::vector<std::string>& list) {
 
   //std::cout << "\n Volumes:: GET_DEVICE\n";
@@ -703,6 +688,9 @@ std::string Volumes::get_device(std::vector<std::string>& list) {
 }
 
 
+// =================================================================================================
+// Function: Volume Exist
+// =================================================================================================
 int Volumes::volume_exist( const std::string volId ){
 
   std::vector<utility::Volume>::iterator it;
@@ -715,6 +703,9 @@ int Volumes::volume_exist( const std::string volId ){
 }
 
 
+// =================================================================================================
+// Function: Release
+// =================================================================================================
 int Volumes::release (std::string &volumeId, int transactionId) {
   
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -727,7 +718,8 @@ int Volumes::release (std::string &volumeId, int transactionId) {
     logger->log("error", "", "volsd", transactionId, "no more idle volume available");
     return -1;
   } else {
-    logger->log("info", "", "volsd", transactionId, "idle volume found:[" + m_volumes[idleVolIndex].id + "]");
+    logger->log("info", "", "volsd", transactionId, 
+                "idle volume found:[" + m_volumes[idleVolIndex].id + "]");
     logger->log("info", "", "volsd", transactionId, "volume's status was changed to 'inprogress'");
     
     if (!update(m_volumes[idleVolIndex].id, "status", "inprogress", transactionId)) {
@@ -738,7 +730,8 @@ int Volumes::release (std::string &volumeId, int transactionId) {
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
   // 2. unmount disk
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
-  logger->log("info", "", "volsd", transactionId, "umounting volume:[" + m_volumes[idleVolIndex].id + "]");
+  logger->log("info", "", "volsd", transactionId, 
+              "umounting volume:[" + m_volumes[idleVolIndex].id + "]");
   
   if (!umount( m_volumes[idleVolIndex].id, m_volumes[idleVolIndex].mountPoint, transactionId )) {
     logger->log("error", "", "volsd", transactionId, "failed to umount volume");
@@ -771,7 +764,8 @@ int Volumes::release (std::string &volumeId, int transactionId) {
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
   // 4. Remove MountPoint
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
-  logger->log("info", "", "volsd", transactionId, "remove mountpoint:[" + m_volumes[idleVolIndex].mountPoint +"]");
+  logger->log("info", "", "volsd", transactionId, 
+              "remove mountpoint:[" + m_volumes[idleVolIndex].mountPoint +"]");
   if (!utility::folder_remove(m_volumes[idleVolIndex].mountPoint)){
     logger->log("error", "", "volsd", transactionId, "could not remove mountpoint");
   } else {
@@ -785,6 +779,9 @@ int Volumes::release (std::string &volumeId, int transactionId) {
 }
 
 
+// =================================================================================================
+// Function: Load
+// =================================================================================================
 bool Volumes::load(){
   // open the file, and load all volume info in the array
   std::ifstream myFile;
@@ -825,9 +822,9 @@ bool Volumes::load(){
 }
 
 
-/* =============================================================================
- * Function: print
- * =============================================================================*/
+// =================================================================================================
+// Function: Print
+// =================================================================================================
 void Volumes::printxyz() {
   for(std::vector<utility::Volume>::iterator it = m_volumes.begin(); it != m_volumes.end(); ++it) {
     std::cout << "VolId:["   << it->id 
@@ -841,14 +838,14 @@ void Volumes::printxyz() {
 }
 
 
-/* =============================================================================
- * Function: remount
- * =============================================================================*/
+// =================================================================================================
+// Function: Remount
+// =================================================================================================
 void Volumes::remount(){
   std::string output;
   
   if ( m_volumes.size() == 0 ){
-    logger->log("info", "", "volsd", 0, "there is no spare volumes to be mounted" , "remount");
+    logger->log("info", "", "volsd", 0, "there is no spare volumes to be mounted");
     return;
   }
   
@@ -858,16 +855,17 @@ void Volumes::remount(){
       if ( !utility::is_mounted(m_volumes[i].mountPoint) ){
         if ( !utility::mountfs(output, m_volumes[i].mountPoint, "/dev/"+m_volumes[i].device) ) {
           
-          logger->log("info", "", "volsd", 0, "cannot mount filesystem. " + output , "remount");
+          logger->log("info", "", "volsd", 0, "cannot mount filesystem. " + output);
           // detach
           if ( !detach(m_volumes[i].id, 0) ) {
-              logger->log("info", "", "volsd", 0, "cannot detach volume. you have to do it manually" , "remount");
+              logger->log("info", "", "volsd", 0, 
+                          "cannot detach volume. you have to do it manually");
           }
-          logger->log("info", "", "volsd", 0, "volume was detach" , "remount");
+          logger->log("info", "", "volsd", 0, "volume was detach");
           
           //remove from list
           if ( !remove(m_volumes[i].id, 0) ){
-            logger->log("error", "", "volsd", 0, "failed to write to file" , "remount");
+            logger->log("error", "", "volsd", 0, "failed to write to file");
           }
         }
       }
@@ -875,9 +873,13 @@ void Volumes::remount(){
     
     
   }
-  logger->log("info", "", "volsd", 0, "all spare volumes are mounted successfully" , "remount");
+  logger->log("info", "", "volsd", 0, "all spare volumes are mounted successfully");
 }
 
+
+// =================================================================================================
+// Function: Aquire
+// =================================================================================================
 int Volumes::acquire( const std::string t_targetFileSystem, const std::string t_snapshotId, 
                       const std::string t_rootMountsFolder, const std::string t_instanceId, 
                       const int         t_transaction 
@@ -906,14 +908,16 @@ int Volumes::acquire( const std::string t_targetFileSystem, const std::string t_
     v.mountPoint = t_rootMountsFolder + utility::randomString();
   }
   
-  logger->log("info", "", "volsd", t_transaction, "allocating mounting point:[" +  v.mountPoint + "]");
+  logger->log("info", "", "volsd", t_transaction, 
+              "allocating mounting point:[" +  v.mountPoint + "]");
   
 
   
   // -----------------------------------------------------------------   
   // 2) Create Volume
   // --------------------------------------------------------------- 
-  logger->log("info", "", "volsd", t_transaction, "create Volume from latest snapshot:[" + t_snapshotId +"]");
+  logger->log("info", "", "volsd", t_transaction, 
+              "create Volume from latest snapshot:[" + t_snapshotId +"]");
   std::string newVolId;
   if ( !create( newVolId, t_snapshotId, t_transaction ) ){
     logger->log("error", "", "volsd", t_transaction, "FALIED to create a volume");
@@ -929,8 +933,8 @@ int Volumes::acquire( const std::string t_targetFileSystem, const std::string t_
   // --------------------------------------------------------------- 
   logger->log("info", "", "volsd", t_transaction, "attaching volume " + v.id);
   if ( !attach(v.id, v.device, t_instanceId, t_transaction ) ){
-    //logger("error", hostname, "EBSManager::thread", transaction, "failed to attaching new disk to localhost. Removing...");
-    logger->log("error", "", "volsd", t_transaction, "FAILED to attaching new disk to localhost. Removing  from AWS space");
+    logger->log("error", "", "volsd", t_transaction, 
+                "FAILED to attaching new disk to localhost. Removing  from AWS space");
     
     if (!del(v.id, t_transaction)){
     
@@ -958,15 +962,16 @@ int Volumes::acquire( const std::string t_targetFileSystem, const std::string t_
     
     if ( !mount(v.id, v.mountPoint, v.device, t_transaction) ) {
       v.mountPoint = t_rootMountsFolder + utility::randomString();
-      logger->log("info", "", "volsd", t_transaction, "FAILED to mount new volume. Retry with a new mountpoint " + v.mountPoint);
+      logger->log("info", "", "volsd", t_transaction, 
+                  "FAILED to mount new volume. Retry with a new mountpoint " + v.mountPoint);
     } else {
       logger->log("info", "", "volsd", t_transaction, "new volume was mounted successfully");
       mounted = true;
     }
     
     if (retry == 5) {
-      //logger("error", hostname, "EBSManager::thread", transaction, "failed to mount new disk to localhost. Detaching...");
-      logger->log("error", "", "volsd", t_transaction, "FAILED to mount new disk to localhost. Detaching...");
+      logger->log("error", "", "volsd", t_transaction, 
+                  "FAILED to mount new disk to localhost. Detaching...");
       if (!detach(v.id, t_transaction))
         logger->log("error", "", "volsd", t_transaction, "FAILED to detach.");
   

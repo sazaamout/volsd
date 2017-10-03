@@ -34,7 +34,6 @@ class Volumes
     
     int is_exist(std::string mountPoint, bool d, int transactionId, Logger& logger);
     int is_used(std::string mountPoint, bool d, int transactionId, Logger& logger);
-    int make_filesystem(std::string device, bool d);
     int sync_filesystem(std::string targetFilesystem, std::string destinationFilesystem);
     bool load();
     
@@ -50,11 +49,15 @@ class Volumes
      
     void set_logger_att ( bool toScreen, std::string logFile, int loglevel );
 
-    int create( std::string &t_volumeId, const std::string t_latestSnapshot, const int t_transactionId );
-    int attach( const std::string t_volumeId, const std::string t_device, const std::string t_instanceId, const int t_transcation );    
+    int create( std::string &t_volumeId, const std::string t_latestSnapshot, 
+                const int t_transactionId );
+    int attach( const std::string t_volumeId, const std::string t_device, 
+                const std::string t_instanceId, const int t_transcation );    
     
-    int mount(const std::string t_volumeId, const std::string t_mountPoint, const std::string t_device, const int t_transactionId );
-    bool umount( const std::string t_volumeId, const std::string t_mountPoint, const int t_transactionId );
+    int mount( const std::string t_volumeId, const std::string t_mountPoint, 
+               const std::string t_device, const int t_transactionId );
+    bool umount( const std::string t_volumeId, const std::string t_mountPoint, 
+                 const int t_transactionId );
     void remount();
     int detach( const std::string t_idleVolId, const int t_transactionId );
     int del(const std::string t_volumeId, int t_transactionId);
@@ -63,17 +66,14 @@ class Volumes
     
     
     // m_volumes modifiers function
-    int update ( const std::string volumeId, const std::string key, const std::string value , const int transactionId);
+    int update ( const std::string volumeId, const std::string key, const std::string value , 
+                 const int transactionId);
     int remove ( const std::string t_volumeId, const int t_transactionId );
     int add ( const utility::Volume t_volumes, const int t_transactionId );
     int volume_exist( const std::string volId );    
     
     int get_idle_number();
     int get_idle_volume( int &idleVolumeIndex, const int transactionId );
-    
-    static std::string ebsvolume_list(std::string select, std::string volumeFile);
-    std::string ebsvolume_local_mountpoint_list();
-    std::string ebsvolume_global_mountpoint_list();
     
     int remove_disk(std::string vol);
     int release_volume( std::string& v, std::string t_instanceId, std::string t_mountPoint, 

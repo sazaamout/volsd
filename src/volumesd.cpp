@@ -40,7 +40,8 @@
   // thread related functions
   void clientDiskAquire_handler(int portNo, std::string request, std::string ip, Volumes &volumes, 
                                 int transId);
-  void clientDiskRelease_handler(Volumes &volumes, const std::string t_volumeId, const int t_transactionId );
+  void clientDiskRelease_handler( Volumes &volumes, const std::string t_volumeId, 
+                                  const int t_transactionId );
   void createDisk_handler(Snapshots& s, Volumes& volumes);
   void removeDisk_handler(Snapshots& s, Volumes& volumes );
   void volume_manager_task(Snapshots &snapshots, Volumes& volumes);
@@ -106,7 +107,9 @@ int main ( int argc, char* argv[] ) {
   
   // 4. ensure that volumes are mounted
   if ( !ensure_mounted(volumes, logger) ){
-    std::cout << "error: target filesystem " << conf.TargetFilesystemMountPoint << " is not mounted\n";
+    std::cout << "error: target filesystem " 
+              << conf.TargetFilesystemMountPoint 
+              << " is not mounted\n";
     return 0;
   }
  
@@ -206,7 +209,10 @@ int main ( int argc, char* argv[] ) {
               break;
             }
 					  
-            thread disk_release_thread(clientDiskRelease_handler, std::ref(volumes), volId, transId);
+            thread disk_release_thread( clientDiskRelease_handler, 
+                                        std::ref(volumes), 
+                                        volId, 
+                                        transId);
             disk_release_thread.detach();
 					
             new_sock.close_socket();
@@ -356,9 +362,6 @@ int main ( int argc, char* argv[] ) {
       return;
     }
     
-    // as soon as you get the release request, change the status
-    volumes.update( t_volumeId, "status", "removing", t_transactionId);
-    
     // delete from volumes list (m_volumes)
     // ### this is the client program job now. We dont have to do it here.
     //logger.log("info", "", "volsd", transId, "delete volume from volumes list");	
@@ -372,7 +375,8 @@ int main ( int argc, char* argv[] ) {
       return;
 	  }
     
-    logger.log("info", "", "volsd", t_transactionId, "volume:[" + t_volumeId + "] was removed from volumes list");
+    logger.log("info", "", "volsd", t_transactionId, "volume:[" + t_volumeId + 
+              "] was removed from volumes list");
   }
  
   

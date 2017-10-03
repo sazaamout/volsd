@@ -19,10 +19,10 @@ sync
 
 
 General 
-- When installing the machine on a new machine, make sure that the installer creates the direcotryes for TempMountPoint VolumeFilePath SnapshotFile *LogFile. All of these varibles etcist on the erc/config file. (done, need test)
+- When installing the machine on a new machine, make sure that the installer creates the direcotryes for TempMountPoint VolumeFilePath SnapshotFile *LogFile. All of these varibles etc ist on the erc/config file. (done, need test)
 - Create a sync class so it can be used by dispatcher and synchroziner and Volumes class
 - start a cleaner thread that check if volumes are correct
-
+- move the diskinfo, snapshots files to aws
 
 Logger
 - remove '2017' from logger
@@ -45,4 +45,4 @@ DONE:
 - Move the syncing funtionality to Volumes Class (think about it)
 - currenlty, Volumes class reads from diskinfo file direcoty, make it read from an array
 
-ebsvolume_idle <=> get_idleVolume
+
