@@ -31,9 +31,8 @@ int _loglevel = 3;
 // -----------------------------------------------------------------------------
 int  mount_vol(Volumes &volumes, std::string t_volumeId, std::string t_mountPoint, Logger& logger);
 bool disk_acquire(Volumes &volumes);
+bool disk_release(Volumes &volumes);
 
-void disk_release(std::string mountPoint);
-void disk_push(std::string mountPoint);
 
 void get_arguments( int argc, char **argv );
 // -----------------------------------------------------------------------------
@@ -53,12 +52,13 @@ int main ( int argc, char* argv[] )
   
   // Collect instance information
   instance_id = utility::get_instance_id(); 
-  std::cout << "1\n";
+  
   Volumes volumes;
   volumes.set_logger_att ( _onscreen, "/var/log/messages", _loglevel );
-  std::cout << "2\n";
+
   if ( diskAcquireRequest ) {
     std::cout << "diskAcquire\n";
+
     if (!disk_acquire(volumes)){
       return 1; // exit with error
     }
@@ -66,7 +66,10 @@ int main ( int argc, char* argv[] )
   
   if ( diskReleaseRequest ){
     std::cout << "diskRelease\n";
-    //disk_release(mountPoint);
+    if (!disk_release(volumes)){
+      return 1; // exit with error
+    }
+    
   }
     
   return 0;
@@ -85,11 +88,11 @@ int main ( int argc, char* argv[] )
     // ----------------------------------------------
     // 1) Get the port for communications with server
     // ----------------------------------------------
-  
+    std::cout << "4\n";
     std::string reply;
     try {
       std::cout << "Connecting to Port 90000\n"; 
-      logger.log("info", "", "volumesd-client", 0, "connecting to port:[9000]");
+      logger.log("info", "", "volsd-client", 0, "requesting communication port from server.");
       ClientSocket client_socket ( "10.2.1.147", 9000 );
       std::string msg, ack;
 
@@ -97,12 +100,12 @@ int main ( int argc, char* argv[] )
         msg = "DiskRequest";
         client_socket << msg;
         client_socket >> reply;
-        logger.log("info", "", "volumesd-client", 0, "response from the server:[" + reply + "]");
+        logger.log("info", "", "volsd-client", 0, "allocated communication port:[" + reply + "]");
         
       } catch ( SocketException& ) {}
     }
     catch ( SocketException& e ){
-      logger.log("error", "", "volumesd-client", 0, "Exception was caught:" + e.description());
+      logger.log("error", "", "volsd-client", 0, "Exception was caught:" + e.description());
       return false;
     }
 
@@ -110,28 +113,28 @@ int main ( int argc, char* argv[] )
     // 2) Connect to the port and start reciving
     // ----------------------------------------------
     try {
-      logger.log("info", "", "volumesd-client", 0, "Connecting to Port:[" + reply + "]");
+      logger.log("info", "", "volsd-client", 0, "connecting to server via communication port:[" + reply + "]");
 
       sleep(2);
-      ClientSocket client_socket ( "10.2.1.30", utility::to_int(reply) );
+      ClientSocket client_socket ( "10.2.1.147", utility::to_int(reply) );
       
       std::string msg, ack;
       
       try {
         client_socket >> reply;
 
-        logger.log("info", "", "volumesd-client", 0, "response from server:[" + reply + "]");
+        logger.log("info", "", "volsd-client", 0, "response from server:[" + reply + "]");
  
         if (reply.compare("MaxDisksReached") == 0) {
-          logger.log("error", "", "volumesd-client", 0, "Maimum Number of volume reached");
+          logger.log("error", "", "volsd-client", 0, "Maimum Number of volume reached");
           return false;
         
         }else if (reply.compare("umountFailed") == 0) {
-          logger.log("error", "", "volumesd-client", 0, "server was unable unmount volume");
+          logger.log("error", "", "volsd-client", 0, "server was unable unmount volume");
           return false;
 
         }else if (reply.compare("detachFailed") == 0) {
-          logger.log("error", "", "volumesd-client", 0, "server was unable to detach volume");
+          logger.log("error", "", "volsd-client", 0, "server was unable to detach volume");
           return false;
 
         }else {
@@ -140,7 +143,7 @@ int main ( int argc, char* argv[] )
           // chcek if mount was successfyl. If not, return Failed so disk status can be 
           // set back to idle
           if (!res) {
-            logger.log("error", "", "volumesd-client", 0, "unable to mount volume, exit");
+            logger.log("error", "", "volsd-client", 0, "unable to mount volume, exit");
             ack = "FAILED";
             client_socket << ack;
             return false;
@@ -150,11 +153,11 @@ int main ( int argc, char* argv[] )
         }
       } catch ( SocketException& ) {}
     } catch ( SocketException& e ){
-      logger.log("error", "", "volumesd-client", 0, "Exception was caught:" + e.description());
+      logger.log("error", "", "volsd-client", 0, "Exception was caught:" + e.description());
       return false;
     }
     
-    //logger.flush();
+
     return true;
   }
     
@@ -169,32 +172,28 @@ int main ( int argc, char* argv[] )
     //------------------------------------------------------------------------------------------------
   
     // get a device. 
-    logger.log("info", "", "volumesd-client", 0, "allocating a device.");
     std::string device = volumes.get_device();
-    logger.log("info", "", "volumesd-client", 0, "device allocated:[" + device + "]");
+    logger.log("info", "", "volsd-client", 0, "allocated device:[" + device + "]");
     
     std::string mountPoint = t_mountPoint;
     if ( mountPoint[mountPoint.length() - 1] != '/' ){
       mountPoint.append("/");
     } 
-    logger.log("info", "", "volumesd-client", 0, "allocating mounting point:[" + mountPoint + "]");
-    
     
     // -----------------------------------------------------------------   
     // 2) Attach Volume
     // --------------------------------------------------------------- 
-    logger.log("info", "", "volumesd-client", 0, "attaching volume " + t_volumeId);
+    logger.log("info", "", "volsd-client", 0, "attaching volume " + t_volumeId);
     if ( !volumes.attach(t_volumeId, device, instance_id, 0 ) ){
-      logger.log("error", "", "volumesd-client", 0, "FAILED to attaching new disk to localhost. Removing  from AWS space");
+      logger.log("error", "", "volsd-client", 0, "FAILED to attaching new disk to localhost. Removing  from AWS space");
       
       if (!volumes.del(t_volumeId, 0)){
-        logger.log("error", "", "volumesd-client", 0, "FAILED to delete volume from AWS space");
+        logger.log("error", "", "volsd-client", 0, "failed to delete volume from AWS space");
       }
-      logger.log("info", "", "volumesd-client", 0, "volume was removed from AWS space");
-      logger.log("debug", "", "volumesd-client", 0, "removing device");
+      logger.log("info", "", "volsd-client", 0, "volume was removed from AWS space");
       return 0;
     }
-    logger.log("info", "", "volumesd-client", 0, "volume was attached successfully");
+    logger.log("info", "", "volsd-client", 0, "volume was attached successfully");
 
     // this sleep is needed since Amazon takes time to attach the volume
     sleep(5);
@@ -202,28 +201,41 @@ int main ( int argc, char* argv[] )
     // -----------------------------------------------------------------   
     // 3) mount Volume
     // --------------------------------------------------------------- 
-    logger.log("info", "", "volumesd-client", 0, "mounting volume into localhost");
+    logger.log("info", "", "volsd-client", 0, "new volume will be mounted in:[" + mountPoint + "]");
     int retry=0;
     bool mounted = false;
     while (!mounted) {
       if ( !volumes.mount(t_volumeId, mountPoint, device, 0) ) {
-        logger.log("info", "", "volumesd-client", 0, "FAILED to mount new volume. Retry");
+        logger.log("info", "", "volsd-client", 0, "failed to mount new volume. Retry");
       } else {
-        logger.log("info", "", "volumesd-client", 0, "new volume was mounted successfully");
+        logger.log("info", "", "volsd-client", 0, "new volume was mounted successfully");
         mounted = true;
       }
       
-      if (retry == 5) {
-        logger.log("error", "", "volumesd-client", 0, "FAILED to mount new volume to localhost. Detaching...");
-        if (!volumes.detach(t_volumeId, 0))
-          logger.log("error", "", "volumesd-client", 0, "FAILED to detach.");
-    
-          logger.log("info", "", "volumesd-client", 0, "removing device");
+      if ((retry == 5) && (!mounted)){
+        logger.log("error", "", "volsd-client", 0, "failed to mount new volume to localhost. Detaching...");
+
+        // detach volumes
+        if (!volumes.detach(t_volumeId, 0)){
+          logger.log("error", "", "volsd-client", 0, "failed to detach volume.");
           return 0;
-      }
+        } else {
+          sleep(5);
+          logger.log("error", "", "volsd-client", 0, "detaching volume was successfult. Removing from Amazon space");
+          // if detach successful, then delete the volume.
+          if (!volumes.del(t_volumeId, 0)){
+            logger.log("error", "", "volsd-client", 0, "failed to delete volume from Amazon space");
+            return 0;
+          }
+          logger.log("info", "", "volsd-client", 0, "volume was removed from AWS space");
+          return 0;
+        }
+      } 
+      
       retry++;
     }
 
+    
     return 1;
   }
 
@@ -234,17 +246,24 @@ int main ( int argc, char* argv[] )
   // DISK_RELEASE FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   
-  void disk_release(std::string mountPoint) {
-    /* REMOVE TO BE ABLE TO START FROM SCRATCH
-    Logger logger(true, "/var/log/messages", 3);
+  bool disk_release(Volumes &volumes) {
+    
+    Logger logger(_onscreen, "/var/log/messages", 3);
     
     std::string reply;
-    Volumes dc(true);
+    
     try {
-      logger.log("info", "Unknown", "EBSCLient", 0, "connecting to port:[" + reply + "]", "Disk_release");
-      ClientSocket client_socket ( "10.2.1.30", 9000 );
-      int res = dc.release_volume(volume, instance_id, mountPoint, true, 0, logger);
-        
+      logger.log("info", "", "volsd-client", 0, "connecting to port:[" + reply + "]");
+      ClientSocket client_socket ( "10.2.1.147", 9000 );
+      
+      if (!volumes.release_volume( volume, instance_id, mountPoint, 0 )){
+        logger.log("info", "", "volsd-client", 0, "failed to release volume");
+        return 0;
+      }
+      
+      
+                             
+                             
       std::string request = "DiskRelease:" + volume;
     
       try {
@@ -252,47 +271,18 @@ int main ( int argc, char* argv[] )
       client_socket >> reply;
       } 
       catch ( SocketException& ) {
-        // retry
+        return 0;
       }
     }
     catch ( SocketException& e ){
-      logger.log("info", "Unknown", "EBSCLient", 0, "Exception was caught:" + e.description(), "Disk_release");
-      return;
+      logger.log("info", "", "volsd-client", 0, "Exception was caught:" + e.description());
+      return 0;
     }  
     
-    //logger.flush();
-    * */
+    return 1;
+    
   }
 
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // DISK_PUSH FUNCTION
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  void disk_push(std::string mountPoint){
-   /* REMOVE TO BE ABLE TO START FROM SCRATCH
-    std::cout <<"Disk_PUSH\n";
-    std::string reply;
-    Volumes dc(true);
-    
-    try {
-      std::cout << "Connecting to Port " << reply << "\n";
-      ClientSocket client_socket ( "10.2.1.30", 9000 );
-      
-      std::string request = "pushRequest" + volume;
-    
-      try {
-      client_socket << request;
-      client_socket >> reply;
-      } 
-      catch ( SocketException& ) {
-        // retry
-      }
-    }
-    catch ( SocketException& e ){
-      std::cout << "Exception was caught:" << e.description() << "\n";
-      return;
-    }  
-*/
-  }
 
 
 
@@ -317,7 +307,7 @@ int main ( int argc, char* argv[] )
           printf("   -v  version number\n");
           exit (0);
         case 'v':
-          printf("volumesd-client version: %i.%i.%i\n", 
+          printf("volsd-client version: %i.%i.%i\n", 
                   CLIENT_MAJOR_VERSION, CLIENT_MINOR_VERSION, CLIENT_PATCH_VERSION
           );
           exit (0);
