@@ -88,7 +88,7 @@ int main ( int argc, char* argv[] )
     // ----------------------------------------------
     // 1) Get the port for communications with server
     // ----------------------------------------------
-    std::cout << "4\n";
+    
     std::string reply;
     try {
       std::cout << "Connecting to Port 90000\n"; 

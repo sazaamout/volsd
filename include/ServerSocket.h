@@ -10,8 +10,8 @@ class ServerSocket : private Socket
 {
  public:
 
+  ServerSocket ();
   ServerSocket ( int port );
-  ServerSocket (){};
   virtual ~ServerSocket();
 
   const ServerSocket& operator << ( const std::string& ) const;

@@ -178,8 +178,6 @@ namespace utility
     std::cout << "Manager log file:\t"    << conf.ManagerLogFile             << std::endl;
     std::cout << "DispatcherLogPrefix:\t" << conf.DispatcherLogPrefix        << std::endl;
     std::cout << "Client log file:\t"     << conf.ClientLogFile              << std::endl;
-    std::cout << "Master loglevel:\t"     << conf.MasterLoglevel             << std::endl;
-    std::cout << "Manager loglevel:\t"    << conf.ManagerLoglevel            << std::endl;
     std::cout << "DispatcherLoglevel:\t" << conf.DispatcherLoglevel         << std::endl;
     std::cout << "Client loglevel:\t"     << conf.ClientLoglevel             << std::endl;
     std::cout << "=========================================================\n\n";
@@ -190,103 +188,91 @@ namespace utility
   // LOAD_CONFIGURATION FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   int load_configuration(Configuration &conf, std::string conf_file){
-    //std::cout << "loading start\n";
+    
     std::fstream myFile;
     myFile.open(conf_file.c_str());
    
     if (!myFile.is_open()) 
       return 0;
-    //std::cout << "file was opened\n";
+    
     
     std::string line;
     
-    while (std::getline(myFile, line)){
-      //std::cout << "reading line: " << line << "\n";
-      
+    while (std::getline(myFile, line))
+    {
       if ( (line[0] == '#') || (line[1] == '#') || (line[0] == '\n')){
         continue;
       }
       
-      if (line.find("MaxIdleDisk") != std::string::npos)
+      if (line.find("Hostname") != std::string::npos) {
+        conf.Hostname = line.substr(line.find(" ")+1);
+      }else if (line.find("MaxIdleDisk") != std::string::npos) 
         conf.MaxIdleDisk = utility::to_int(line.substr(line.find(" ")+1));
-      else if (line.find("TargetFilesystem ") != std::string::npos)
-        conf.TargetFilesystem = line.substr(line.find(" ")+1);
       else if (line.find("TargetFilesystemMountPoint") != std::string::npos)
         conf.TargetFilesystemMountPoint = line.substr(line.find(" ")+1);
-      else if (line.find("TargetFilesystemDevice") != std::string::npos)
+      else if (line.find("TargetFilesystemDevice") != std::string::npos) 
         conf.TargetFilesystemDevice = line.substr(line.find(" ")+1);
-      else if (line.find("TempMountPoint") != std::string::npos)
+      else if (line.find("TargetFilesystem") != std::string::npos) 
+        conf.TargetFilesystem = line.substr(line.find(" ")+1);
+      else if (line.find("TempMountPoint") != std::string::npos) 
         conf.TempMountPoint = line.substr(line.find(" ")+1);
-      else if (line.find("SnapshotFrequency") != std::string::npos)
+      else if (line.find("SnapshotFrequency") != std::string::npos) 
         conf.SnapshotFrequency = utility::to_int(line.substr(line.find(" ")+1));
-      else if (line.find("Hostname") != std::string::npos)
-        conf.Hostname = line.substr(line.find(" ")+1);
-      else if (line.find("SnapshotFile") != std::string::npos)
+      else if (line.find("SnapshotFile") != std::string::npos) 
         conf.SnapshotFile = line.substr(line.find(" ")+1);
-      else if (line.find("SnapshotMaxNumber") != std::string::npos)
+      else if (line.find("SnapshotMaxNumber") != std::string::npos) 
         conf.SnapshotMaxNumber = utility::to_int(line.substr(line.find(" ")+1));
-      else if (line.find("VolumeFilePath") != std::string::npos)
+      else if (line.find("VolumeFilePath") != std::string::npos)  
         conf.VolumeFilePath = line.substr(line.find(" ")+1);
-      else if (line.find("ManagerLogFile") != std::string::npos)
+      else if (line.find("ManagerLogFile") != std::string::npos) 
         conf.ManagerLogFile = line.substr(line.find(" ")+1);
-      else if (line.find("DispatcherLogPrefix") != std::string::npos)
+      else if (line.find("DispatcherLogPrefix") != std::string::npos) 
         conf.DispatcherLogPrefix = line.substr(line.find(" ")+1);
-      else if (line.find("ClientLogFile") != std::string::npos)
+      else if (line.find("ClientLogFile") != std::string::npos) 
         conf.ClientLogFile = line.substr(line.find(" ")+1);
-      else if (line.find("SyncerLogFile") != std::string::npos)
-        conf.SyncerLogFile = line.substr(line.find(" ")+1);
-      else if (line.find("Syncerloglevel") != std::string::npos)
-        conf.Syncerloglevel = utility::to_int(line.substr(line.find(" ")+1));
-      else if (line.find("Masterloglevel") != std::string::npos)
-        conf.MasterLoglevel = utility::to_int(line.substr(line.find(" ")+1));
-      else if (line.find("Managerloglevel") != std::string::npos)
-        conf.ManagerLoglevel = utility::to_int(line.substr(line.find(" ")+1));
-      else if (line.find("DispatcherLoglevel") != std::string::npos)
+      else if (line.find("DispatcherLoglevel") != std::string::npos) 
         conf.DispatcherLoglevel = utility::to_int(line.substr(line.find(" ")+1));
-      else if (line.find("Clientloglevel") != std::string::npos)
+      else if (line.find("ClientLoglevel") != std::string::npos) 
         conf.ClientLoglevel = utility::to_int(line.substr(line.find(" ")+1));
-      else if (line.find("SyncFrequency") != std::string::npos)
-        conf.SyncFrequency = utility::to_int(line.substr(line.find(" ")+1));
-      else if (line.find("SyncRequestsFile") != std::string::npos)
+      
+      else if (line.find("SyncVolumes") != std::string::npos) 
+        conf.SyncVolumes = line.substr(line.find(" ")+1);
+      else if (line.find("SyncVolumesInterval") != std::string::npos) 
+        conf.SyncVolumesInterval = utility::to_int(line.substr(line.find(" ")+1));
+      else if (line.find("SyncRequestsFile") != std::string::npos) 
         conf.SyncRequestsFile = line.substr(line.find(" ")+1);
-                
-      else if (line.find("SyncDatesFile") != std::string::npos)
+      else if (line.find("SyncLogPrefix") != std::string::npos) 
+        conf.SyncLogPrefix = line.substr(line.find(" ")+1);              
+      else if (line.find("SyncLogLevel") != std::string::npos) 
+        conf.SyncLogLevel = utility::to_int(line.substr(line.find(" ")+1));          
+      else if (line.find("SyncDatesFile") != std::string::npos) 
         conf.SyncDatesFile = line.substr(line.find(" ")+1);
-                
-      else if (line.find("SyncerServicePort") != std::string::npos)
-        conf.SyncerServicePort = utility::to_int(line.substr(line.find(" ")+1));
-      
-      else if (line.find("SynOutputEmailTo") != std::string::npos)
-        conf.SynOutputEmailTo = line.substr(line.find(" ")+1);
-      else if (line.find("SynErrorEmailTo") != std::string::npos)
-        conf.SynErrorEmailTo = line.substr(line.find(" ")+1);  
-      
-      else if (line.find("EmailSynOutput") != std::string::npos)
-        conf.EmailSynOutput = line.substr(line.find(" ")+1);
-      else if (line.find("EmailSynError") != std::string::npos)
-        conf.EmailSynError = line.substr(line.find(" ")+1);  
-
-      else if (line.find("LocalRsyncCommand") != std::string::npos)
+      else if (line.find("SyncServicePort") != std::string::npos) 
+        conf.SyncServicePort = utility::to_int(line.substr(line.find(" ")+1));
+      else if (line.find("SyncOutputEmailTo") != std::string::npos) 
+        conf.SyncOutputEmailTo = line.substr(line.find(" ")+1);
+      else if (line.find("SyncErrorEmailTo") != std::string::npos) 
+        conf.SyncErrorEmailTo = line.substr(line.find(" ")+1);  
+      else if (line.find("EmailSyncOutput") != std::string::npos) 
+        conf.EmailSyncOutput = line.substr(line.find(" ")+1);
+      else if (line.find("EmailSyncError") != std::string::npos) 
+        conf.EmailSyncError = line.substr(line.find(" ")+1);  
+      else if (line.find("LocalRsyncCommand") != std::string::npos) 
         conf.LocalRsyncCommand = line.substr(line.find(" ")+1);
-      else if (line.find("RemoteRsyncCommand") != std::string::npos)
+      else if (line.find("RemoteRsyncCommand") != std::string::npos) 
         conf.RemoteRsyncCommand = line.substr(line.find(" ")+1);  
-                        
-                        else if (line.find("EmailPushOutput") != std::string::npos)
-                                 conf.EmailPushOutput = line.substr(line.find(" ")+1);
-                        else if (line.find("EmailPushError") != std::string::npos)
-                                 conf.EmailPushError = line.substr(line.find(" ")+1);
-                        else if (line.find("EmailPushEmail") != std::string::npos)
-                                 conf.EmailPushEmail = line.substr(line.find(" ")+1);
+      else if (line.find("EmailPushOutput") != std::string::npos) 
+        conf.EmailPushOutput = line.substr(line.find(" ")+1);
+      else if (line.find("EmailPushError") != std::string::npos) 
+        conf.EmailPushError = line.substr(line.find(" ")+1);
+      else if (line.find("EmailPushEmail") != std::string::npos) 
+        conf.EmailPushEmail = line.substr(line.find(" ")+1);
+      else continue;
 
-      else
-        continue;
-        
       line="";
     }
     myFile.close(); 
     
-    //std::cout << "loading is done\n";
-    //print_configuration(conf);
     return 1;
   }
 

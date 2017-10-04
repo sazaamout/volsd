@@ -58,24 +58,22 @@ namespace utility
 	  std::string ManagerLogFile;
 	  std::string DispatcherLogPrefix;
 	  std::string ClientLogFile;
-	  std::string SyncerLogFile;
-	  int MasterLoglevel;
-	  int ManagerLoglevel;
+	  
 	  int DispatcherLoglevel;
 	  int ClientLoglevel;
-	  int Syncerloglevel;
-		
-	  int SyncerServicePort;
-	  int SyncFrequency;
+    
+    // sync
+	  std::string SyncLogPrefix;
+		int         SyncLogLevel;
+	  int         SyncServicePort;
+    std::string SyncVolumes;
+	  int         SyncVolumesInterval;
 	  std::string SyncRequestsFile;
 	  std::string SyncDatesFile;
-		
-	  std::string SynErrorEmailTo;
-	  std::string SynOutputEmailTo;
-	
-    std::string EmailSynOutput;
-    std::string EmailSynError;
-	
+	  std::string SyncErrorEmailTo;
+	  std::string SyncOutputEmailTo;
+    std::string EmailSyncOutput;
+    std::string EmailSyncError;
 	  std::string RemoteRsyncCommand;
 	  std::string LocalRsyncCommand;
     std::string EmailPushOutput;

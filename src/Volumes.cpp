@@ -826,6 +826,7 @@ bool Volumes::load(){
 // Function: Print
 // =================================================================================================
 void Volumes::printxyz() {
+  
   for(std::vector<utility::Volume>::iterator it = m_volumes.begin(); it != m_volumes.end(); ++it) {
     std::cout << "VolId:["   << it->id 
               << "] statu:[" << it->status 
@@ -834,7 +835,6 @@ void Volumes::printxyz() {
               << "] devic:[" << it->device 
               << "]\n";
   }
-  
 }
 
 
@@ -985,15 +985,6 @@ int Volumes::acquire( const std::string t_targetFileSystem, const std::string t_
   }
   
   v.status     = "idle";
- 
- 
-  std::cout << v.device << "\n";
-  std::cout << v.mountPoint << "\n";
-  std::cout << v.id << "\n";
-  std::cout << v.attachedTo << "\n";
-  std::cout << v.status << "\n";
- 
-
 
   // -----------------------------------------------------------------------------------------------
   // 5. Sync Volume with the TargetFilesystemMountPoint
