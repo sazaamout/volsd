@@ -23,6 +23,10 @@ The system consist of the following components:
     -- When the instance is terminated, the client program will release the mounted volume and send a "DiskRelease" message to the *volumesd* which in turn will remove that volume from the disks list.
 
 # Main features #
+## Pre Installation ##
+  1. ensure that the root user is set to perform passwordless ssh in to all target servers. This means you have to setup ssh keys for the root user. All target servers must have the root key when they are starting. You can configure one server with root keys and save it as image to be used in an autoscaling group.
+  2. ensure that aws cli has the correct permissions to perform s3 and ec2 operations.
+  
 ## Installation ##
   1. clone the project
   2. create a build directory anywhere you want. I perfer creating the build directory inside the root directory of the project
