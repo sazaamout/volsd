@@ -62,7 +62,10 @@
                                   const int t_transactionId );
   void createDisk_handler(Snapshots& s, Volumes& volumes, const int t_transactionId);
   void removeDisk_handler(Snapshots& s, Volumes& volumes, const int t_transactionId);
- 
+  
+  void createSnapshot_handler( Snapshots& snapshots );
+  void removeSnapshot_handler( Snapshots& snapshots );
+  
   void signalHandler( int signum );
   
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -72,8 +75,6 @@ using namespace std;
 using namespace utility;
 	
 int main ( int argc, char* argv[] ) {
-  
-  
 
   // user must be root
   if (!utility::is_root()){
@@ -100,11 +101,6 @@ int main ( int argc, char* argv[] ) {
     std::cout << "error: cannot locate configuration file\n";
     return 1;
   }
-    
-  std::cout << "tid:"<< conf.TargetFilesystem << "\n";
-  std::cout << "t:"<< conf.TargetFilesystemMountPoint << "\n";
-  std::cout << "td:"<< conf.TargetFilesystemDevice << "\n";
-  
   
   // 2. Ensure files and directories are created
   utility::folders_create( conf.DispatcherLogPrefix );
@@ -165,13 +161,9 @@ int main ( int argc, char* argv[] ) {
     // ~~~~~~~~~~~~~~~~~~~~~~~
     std::string output;
     logger.log( "debug", "", "volsd", 1, "check if we need to create a new snapshot" );
-    if ( snapshots.renew() ) {
-      //this variables tells the termination signal handler function if there is operation going on
-      snapshotsOpPending = 1;
-      if (!snapshots.create_snapshot(conf.TargetFilesystem, conf.SnapshotFrequency)){
-        logger.log( "error", "", "volsd", 1, "could not create new snapshot" );	
-      }
-      snapshotsOpPending = 0;
+    if ( ( snapshots.renew() )  || ( snapshots.size() <  conf.SnapshotMaxNumber ) ){
+      std::thread createSnapshot_thread( createSnapshot_handler, std::ref(snapshots) );
+      createSnapshot_thread.detach();
     }
     logger.log( "debug", "", "volsd", 1, "No need to create new snapshot" );
     
@@ -181,7 +173,7 @@ int main ( int argc, char* argv[] ) {
     // ~~~~~~~~~~~~~~~~~~~~~~~
     value = volumes.get_idle_number() + inProgressVolumes;
     if ( value < conf.MaxIdleDisk ){
-      diskCreateOpPending = 1;
+      
       logger.log( "debug", "", "volsd", 2, "creating a new volume" );	
       std::thread creatDisk_thread( createDisk_handler, 
                                     std::ref(snapshots), 
@@ -191,7 +183,7 @@ int main ( int argc, char* argv[] ) {
     }
     
     if ( value > conf.MaxIdleDisk ){
-      diskRemoveOpPending = 1;
+      
       logger.log( "debug", "", "volsd", 2, "removing a volume" );	
       std::thread removeDisk_thread( removeDisk_handler, 
                                     std::ref(snapshots), 
@@ -468,6 +460,9 @@ void volumesDispatcher_handler( Volumes &volumes ){
   // -------------------------------------------------------------------
   void createDisk_handler(Snapshots& snapshot, Volumes& volumes, const int t_transactionId){
     
+    //this variables tells the termination signal handler function if there is operation going on
+    diskCreateOpPending = 1;
+    
 	  // set this varabile so that main wont create another thread to create new disk
     inProgressVolumes++;
     
@@ -497,6 +492,9 @@ void volumesDispatcher_handler( Volumes &volumes ){
   // -------------------------------------------------------------------
   void removeDisk_handler(Snapshots& s, Volumes& volumes, const int t_transactionId) {
 	  
+    //this variables tells the termination signal handler function if there is operation going on
+    diskRemoveOpPending = 1;
+    
 	  Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
 	  
 	  std::string volumeId;
@@ -517,6 +515,20 @@ void volumesDispatcher_handler( Volumes &volumes ){
   }
   
   	
+    
+  void createSnapshot_handler( Snapshots& snapshots ) {
+    
+    Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
+    
+    //this variables tells the termination signal handler function if there is operation going on
+    snapshotsOpPending = 1;
+    
+    if (!snapshots.create_snapshot(conf.TargetFilesystem, conf.SnapshotFrequency)){
+      logger.log( "error", "", "volsd", 1, "could not create new snapshot" );	
+    }
+    snapshotsOpPending = 0;
+  }
+  
   // -------------------------------------------------------------------
   // POPULATE_PORT_ARRAY
   // -------------------------------------------------------------------

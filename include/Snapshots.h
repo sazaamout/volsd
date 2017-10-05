@@ -33,7 +33,7 @@ class Snapshots {
     
 		int update_snapshots( const Snapshot t_snapshot );
 		std::string next_token(std::string& str, std::string delimiter);
-		int snapshot_count();
+		
 		int write_to_file();
     
 	public:
@@ -47,13 +47,15 @@ class Snapshots {
 		int delete_snapshot();
 		
 		int create_snapshot( const std::string t_targetFilesystem, int t_frequency );
-		void print_snapshots( );
+		
 		
 		//std::string get_latest(std::string select, Logger& logger);
     int latest( std::string &t_snapshotId );
     std::string latest_date( );
     int renew();
     int load();
+    int size();
+    void print();
 };
 
 #endif

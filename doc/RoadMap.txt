@@ -8,10 +8,10 @@ utility
 - ensure that conf file is correct
 - redo the utility::is_root to use uuid
 
-dispatcher
+volsd
 - ensure that the aws command is there
 - fixed the disatcher pars_args function (done for dispatcher. Still needed for sync and client)
-
+- Logger is defined in every handler. Make a global one for volsd
 
 
 sync

@@ -1,6 +1,5 @@
 // TODO:
 // 1. store data to s3
-// 2. fix the graceful shutdown
 // 3. finish re-implementing the rest of functions
 
 
@@ -30,25 +29,8 @@ void Snapshots::set_logger_att( bool toScreen, std::string logFile, int loglevel
 }
 
 
-int Snapshots::snapshot_count(){
-
-  int no=0;
-  std::fstream myFile;
-  std::string line;
-  myFile.open(m_snapshotFile.c_str());
- 
-  if (!myFile.is_open())
-    return -1;
-    
-    // check if file is empty
-    if ( myFile.peek() == std::ifstream::traits_type::eof() )
-    return 0;
-    
-  while (std::getline(myFile, line)){
-    no++;
-  }
-  myFile.close(); 
-  return no;
+int Snapshots::size(){
+  return m_snapshots.size(); 
 }
 
 
@@ -126,16 +108,16 @@ int Snapshots::create_snapshot( const std::string t_targetFilesystem, int t_freq
 // =================================================================================================
 // Function: 
 // =================================================================================================
-void Snapshots::print_snapshots( ) {
+void Snapshots::print( ) {
 
   if (m_snapshots.empty())
     std::cout << " There are no snapshots created yet";
 
   for(std::vector<Snapshot>::iterator it = m_snapshots.begin(); it != m_snapshots.end(); ++it) {
-    std::cout << "VolId:["   << it->id 
-              << "] statu:[" << it->timestamp 
-              << "] attac:[" << it->status 
-              << "] mount:[" << it->is_latest
+    std::cout << "Id:["   << it->id 
+              << "] TS:[" << it->timestamp 
+              << "] ST:[" << it->status 
+              << "] LA:[" << it->is_latest
               << "]\n";  
   
   }
@@ -244,7 +226,7 @@ int Snapshots::load(){
       s.status = line.substr(ts_pos+1, status_pos-ts_pos-1);
       
       std::size_t latest_pos = line.find(' ', status_pos+1);
-      s.is_latest = line.substr(latest_pos+1, status_pos-latest_pos-1);
+      s.is_latest = line.substr(status_pos+1, latest_pos-status_pos-1);
       
       m_snapshots.push_back(s);
   }
@@ -261,6 +243,7 @@ int Snapshots::load(){
     std::string output;
     utility::exec(output, "aws ec2 delete-snapshot --snapshot-id " + sId + " --region us-east-1");
   }
+  
   
   return 0;  
 }
