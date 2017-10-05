@@ -37,9 +37,11 @@
   // graceful stop
   int sigterm     = 0;
   int signalCount = 0;
+ 
+  int diskCreateOpPending = 0;
+  int diskRemoveOpPending = 0;
+  int snapshotsOpPending   = 0;
   
-  int snapshotManager_handler_status = 0;
-  int volumesManager_handler_status  = 0;
   
   ServerSocket *server;
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -60,9 +62,9 @@
                                   const int t_transactionId );
   void createDisk_handler(Snapshots& s, Volumes& volumes, const int t_transactionId);
   void removeDisk_handler(Snapshots& s, Volumes& volumes, const int t_transactionId);
-
-  
+ 
   void signalHandler( int signum );
+  
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // MAIN PROGRAM
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -123,6 +125,7 @@ int main ( int argc, char* argv[] ) {
   Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
   
   Snapshots snapshots(conf.SnapshotMaxNumber, conf.SnapshotFile, conf.SnapshotFrequency);
+  snapshots.set_logger_att ( _onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel );
   
   Volumes volumes( conf.TempMountPoint, conf.VolumeFilePath, conf.MaxIdleDisk );
   volumes.set_logger_att ( _onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel );
@@ -152,19 +155,30 @@ int main ( int argc, char* argv[] ) {
   // Core Functionality
   // -------------------------------------------------------------------
   int value;
-  while ((true) && (!sigterm)){
-    // 2. maintain latest snapshot,
+  while ((true) && (!sigterm) ){
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~
+    // 1. maintain snapshots
+    // ~~~~~~~~~~~~~~~~~~~~~~~
     std::string output;
     logger.log( "debug", "", "volsd", 1, "check if we need to create a new snapshot" );
-    if (!snapshots.create_snapshot(conf.TargetFilesystem, conf.SnapshotFrequency, logger)){
-      logger.log( "error", "", "volsd", 1, "could not create new snapshot" );	
+    if ( snapshots.renew() ) {
+      //this variables tells the termination signal handler function if there is operation going on
+      snapshotsOpPending = 1;
+      if (!snapshots.create_snapshot(conf.TargetFilesystem, conf.SnapshotFrequency)){
+        logger.log( "error", "", "volsd", 1, "could not create new snapshot" );	
+      }
+      snapshotsOpPending = 0;
     }
-      
-
-    // 1. maintain volumes
+    logger.log( "debug", "", "volsd", 1, "No need to create new snapshot" );
     
+    /*
+    // ~~~~~~~~~~~~~~~~~~~~~~~
+    // 1. maintain volumes
+    // ~~~~~~~~~~~~~~~~~~~~~~~
     value = volumes.get_idle_number() + inProgressVolumes;
     if ( value < conf.MaxIdleDisk ){
+      diskCreateOpPending = 1;
       logger.log( "debug", "", "volsd", 2, "creating a new volume" );	
       std::thread creatDisk_thread( createDisk_handler, 
                                     std::ref(snapshots), 
@@ -174,6 +188,7 @@ int main ( int argc, char* argv[] ) {
     }
     
     if ( value > conf.MaxIdleDisk ){
+      diskRemoveOpPending = 1;
       logger.log( "debug", "", "volsd", 2, "removing a volume" );	
       std::thread removeDisk_thread( removeDisk_handler, 
                                     std::ref(snapshots), 
@@ -183,7 +198,7 @@ int main ( int argc, char* argv[] ) {
     }
     
     
-    
+    */  
     sleep(10);
   }
   
@@ -456,7 +471,7 @@ void volumesDispatcher_handler( Volumes &volumes ){
 	  Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
   
     std::string snapshotId;
-    if (!snapshot.latest(snapshotId, logger)){
+    if (!snapshot.latest(snapshotId)){
 	    logger.log("info", "", "Manager", t_transactionId, "No snapshot was found.");
     }
   
@@ -467,8 +482,10 @@ void volumesDispatcher_handler( Volumes &volumes ){
       logger.log("info", "", "Manager", t_transactionId, "faield to acquire new volume.");
     }
     
-    inProgressVolumes--;      
- 
+    inProgressVolumes--;   
+
+
+    diskCreateOpPending = 0;
   }
 
 
@@ -477,21 +494,23 @@ void volumesDispatcher_handler( Volumes &volumes ){
   // -------------------------------------------------------------------
   void removeDisk_handler(Snapshots& s, Volumes& volumes, const int t_transactionId) {
 	  
-	Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
+	  Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
 	  
-	std::string volumeId;
+	  std::string volumeId;
 	
-	int res = volumes.release( volumeId, t_transactionId );
-	// delete from volumes list (m_volumes)
+	  int res = volumes.release( volumeId, t_transactionId );
+	  // delete from volumes list (m_volumes)
     logger.log("debug", "", "Manager", t_transactionId, "delete volume from volumes list");	
     volumes.del(volumeId, t_transactionId);
 	  
-	// delete from aws
-	logger.log("info", "", "Manager", t_transactionId, "delete volume in aws enviroment");	
-	if ( !volumes.remove(volumeId, t_transactionId) ){
-	  logger.log("error", "", "Manager", t_transactionId, 
+	  // delete from aws
+	  logger.log("info", "", "Manager", t_transactionId, "delete volume in aws enviroment");	
+	  if ( !volumes.remove(volumeId, t_transactionId) ){
+	    logger.log("error", "", "Manager", t_transactionId, 
                  "failed to delete volume:[" + volumeId + "] from amazon site");
     }
+    
+    diskRemoveOpPending = 0;
   }
   
   	
@@ -647,14 +666,28 @@ void signalHandler( int signum ) {
          // the socket that will make a connection to the socket. Once we pass the accept method, 
          // then the while loop will exit since it have !sigterm as condition.
          server->close_socket();
-         
+
+         // 2 Stop volumeDispatcher thread         
          ClientSocket client_socket ( "localhost", 9000 );
          client_socket << "";
          client_socket.close_socket();
-         
-         // 2 Stop volumeDispatcher thread
          volumesDispatcher_thread.join();
 
+         // 3 check if main program have some opreation
+         while (snapshotsOpPending){
+           std::cout << "waiting for snahpt thread to finish: " << snapshotsOpPending << "\n";
+           sleep(1);
+         }
+         
+         while (diskCreateOpPending){
+           std::cout << "waiting for volumes manaber thread to finish\n";
+           sleep(1);
+         }
+         
+         while (diskRemoveOpPending){
+           std::cout << "waiting for volumes manaber thread to finish\n";
+           sleep(1);
+         }
        }
        break;
        

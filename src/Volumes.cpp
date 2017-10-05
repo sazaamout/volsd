@@ -337,13 +337,17 @@ int Volumes::get_idle_number() {
 
 bool Volumes::write_to_file( int transactionId ){
   // write back to file
-  logger->log("debug", "", "volsd", transactionId, "writing changes to disk file", "write_to_file");
+  logger->log("debug", "", "volsd", transactionId, 
+              "writing changes to volumes file", 
+              "write_to_file");
   
   std::ofstream myFileOut;
   myFileOut.open(_volumeFile.c_str(), std::fstream::out | std::fstream::trunc);
 
   if (!myFileOut.is_open()) {
-    logger->log("error", "", "volsd", transactionId, "could not open disk file", "write_to_file");
+    logger->log("error", "", "volsd", transactionId, 
+                "could not open volumes file", 
+                "write_to_file");
     return false;
   }
 
