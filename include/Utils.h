@@ -42,6 +42,7 @@ namespace utility
   struct Configuration {
 	  std::string Hostname;
     int SnapshotFrequency;
+    std::string SnapshotFileStorage;
     std::string SnapshotFile; 
 	  int SnapshotMaxNumber;
 	  std::string TargetFilesystem;

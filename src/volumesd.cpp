@@ -124,7 +124,10 @@ int main ( int argc, char* argv[] ) {
   _loglevel = conf.DispatcherLoglevel;
   Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
   
-  Snapshots snapshots(conf.SnapshotMaxNumber, conf.SnapshotFile, conf.SnapshotFrequency);
+  Snapshots snapshots( conf.SnapshotMaxNumber, 
+                       conf.SnapshotFile, 
+                       conf.SnapshotFrequency, 
+                       conf.SnapshotFileStorage);
   snapshots.set_logger_att ( _onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel );
   
   Volumes volumes( conf.TempMountPoint, conf.VolumeFilePath, conf.MaxIdleDisk );

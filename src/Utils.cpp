@@ -220,6 +220,8 @@ namespace utility
         conf.SnapshotFrequency = utility::to_int(line.substr(line.find(" ")+1));
       else if (line.find("SnapshotFile") != std::string::npos) 
         conf.SnapshotFile = line.substr(line.find(" ")+1);
+      else if (line.find("SnapshotFileStorage") != std::string::npos) 
+        conf.SnapshotFileStorage = utility::to_int(line.substr(line.find(" ")+1));
       else if (line.find("SnapshotMaxNumber") != std::string::npos) 
         conf.SnapshotMaxNumber = utility::to_int(line.substr(line.find(" ")+1));
       else if (line.find("VolumeFilePath") != std::string::npos)  

@@ -15,9 +15,11 @@
 class Snapshots {
 	private:
 		int m_snapshotMaxNumber;
-		int counter;
-		int m_snapshotFreq;
+    int m_snapshotFreq;
 		std::string m_snapshotFile;
+    std::string m_snapshotFileStorage;
+		int counter;
+		
     
 		struct Snapshot{
 			std::string id;
@@ -36,7 +38,8 @@ class Snapshots {
     
 	public:
 		Snapshots(){};
-		Snapshots( const int t_snapshotMaxNo, const std::string t_snapshotFile, const int t_snapshotFreq );
+		Snapshots( const int t_snapshotMaxNo, const std::string t_snapshotFile, 
+               const int t_snapshotFreq,  const std::string t_snapshotFileStorage );
 		~Snapshots();
 		void set_logger_att( bool toScreen, std::string logFile, int loglevel );
     

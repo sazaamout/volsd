@@ -1,11 +1,20 @@
+// TODO:
+// 1. store data to s3
+// 2. fix the graceful shutdown
+// 3. finish re-implementing the rest of functions
+
 
 #include "Snapshots.h"
 
-
-Snapshots::Snapshots( const int t_snapshotMaxNo, const std::string t_snapshotFile, const int t_snapshotFreq ){
-  m_snapshotMaxNumber = t_snapshotMaxNo;
-  m_snapshotFile      = t_snapshotFile;
-  m_snapshotFreq      = t_snapshotFreq;
+// =================================================================================================
+// Class Constructor 
+// =================================================================================================
+Snapshots::Snapshots( const int t_snapshotMaxNo, const std::string t_snapshotFile, 
+                      const int t_snapshotFreq, const std::string t_snapshotFileStorage ){
+  m_snapshotMaxNumber   = t_snapshotMaxNo;
+  m_snapshotFile        = t_snapshotFile;
+  m_snapshotFreq        = t_snapshotFreq;
+  m_snapshotFileStorage = t_snapshotFileStorage;
   
   load();
 }
@@ -42,6 +51,10 @@ int Snapshots::snapshot_count(){
   return no;
 }
 
+
+// =================================================================================================
+// Function: 
+// =================================================================================================
 int Snapshots::renew() {
   // get the current time 
   std::string current_timestamp = utility::unixTime();
@@ -61,7 +74,9 @@ int Snapshots::renew() {
   
 }
 
-
+// =================================================================================================
+// Function: 
+// =================================================================================================
 int Snapshots::create_snapshot( const std::string t_targetFilesystem, int t_frequency ){
   
   std::string output, snapshot_id;
@@ -108,7 +123,9 @@ int Snapshots::create_snapshot( const std::string t_targetFilesystem, int t_freq
   return 1;
 }
 
-
+// =================================================================================================
+// Function: 
+// =================================================================================================
 void Snapshots::print_snapshots( ) {
 
   if (m_snapshots.empty())
@@ -125,6 +142,9 @@ void Snapshots::print_snapshots( ) {
 }
 
 
+// =================================================================================================
+// Function: 
+// =================================================================================================
 int Snapshots::update_snapshots( const Snapshot t_snapshot ) {
   
   // 1) Appned the new snapshot to file
@@ -154,6 +174,9 @@ int Snapshots::update_snapshots( const Snapshot t_snapshot ) {
 }
 
 
+// =================================================================================================
+// Function: 
+// =================================================================================================
 std::string Snapshots::latest_date(){
   
   logger->log("debug", "", "volsd", 1, "looking for latest snapshot", "get_latest");  
@@ -161,17 +184,13 @@ std::string Snapshots::latest_date(){
   if (m_snapshots.empty())
     return "654369275";
  
-  // latest snapshot is the last snapshot in the vector
-  //for(std::vector<Snapshot>::iterator it = m_snapshots.begin(); it != m_snapshots.end(); ++it) {
-  //  if ( it->is_latest == "true" ){
-  //    logger->log("debug", "", "volsd", 0, "latest snapshot timestamp was [" +  it->timestamp + "]", "get_latest");
-  //    return it->timestamp;
-  //  }
-  //}
   return m_snapshots[ m_snapshots.size()-1 ].timestamp;
 }
 
 
+// =================================================================================================
+// Function: 
+// =================================================================================================
 int Snapshots::latest( std::string &t_snapshotId ){
   
   logger->log("debug", "", "volsd", 1, "looking for latest snapshot", "get_latest");  
@@ -190,7 +209,17 @@ int Snapshots::latest( std::string &t_snapshotId ){
 }
 
 
+// =================================================================================================
+// Function: 
+// =================================================================================================
 int Snapshots::load(){
+  
+  // based on m_snapshotFileStorage. we will load data.
+  if (m_snapshotFileStorage == "local") {
+  } 
+  
+  if (m_snapshotFileStorage == "s3") {
+  } 
   
   // 1) open the file, and load all volume info in the array
   std::ifstream myFile;
@@ -237,6 +266,9 @@ int Snapshots::load(){
 }
 
 
+// =================================================================================================
+// Function: 
+// =================================================================================================
 int Snapshots::write_to_file(){
   // write back to file
   logger->log("debug", "", "volsd", 1, 
