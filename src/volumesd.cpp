@@ -1,3 +1,5 @@
+// TODO:when a clinet makes a request, and server shutdown, this is not graceful. Fix
+
 #include <string>
 #include <iostream>
 #include <thread>
@@ -21,14 +23,16 @@
 
   std::string hostname; 
   std::string instance_id;
-	
   std::vector<std::string>  devices_list;
-	
-  bool _onscreen = false;
-  std::string _conffile;
-  int _loglevel = 3;
 
+  std::string _conffile;
   int inProgressVolumes;
+  // defauls
+  
+  int syncVolumes = 1; // default is true
+  int syncPeriods = 60; // default is 60 min
+  int _loglevel = 3;
+  bool _onscreen = false;
   
   std::thread manager_thread;
   std::thread snapshotManager_thread;
@@ -37,13 +41,15 @@
   // graceful stop
   int sigterm     = 0;
   int signalCount = 0;
- 
-  int diskCreateOpPending = 0;
-  int diskRemoveOpPending = 0;
+  int diskCreateOpPending  = 0;
+  int diskRemoveOpPending  = 0;
+  int diskAcquireOpPending = 0;
+  int diskReleaseOpPending = 0;
   int snapshotsOpPending   = 0;
-  
+  int syncingOpPending     = 0;
   
   ServerSocket *server;
+  
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // FUNCTION PROTOTYPES
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -65,6 +71,8 @@
   
   void createSnapshot_handler( Snapshots& snapshots );
   void removeSnapshot_handler( Snapshots& snapshots );
+  
+  void volumesSync_handler( Snapshots& s, Volumes& volumes, Sync& sync);
   
   void signalHandler( int signum );
   
@@ -91,18 +99,31 @@ int main ( int argc, char* argv[] ) {
   // -------------------------------------------------------------------
   // Initializations	
   // -------------------------------------------------------------------
-  // 0. Setup the signals handler
+  
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // 1. Setup the signals handler
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   signal (SIGTERM, signalHandler);
   signal (SIGINT, signalHandler);
   signal(SIGHUP, signalHandler); 
   
-  // 1. Load the configurations from conf file
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // 2. Load the configurations from conf file
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   if ( !utility::load_configuration(conf, _conffile) ){
     std::cout << "error: cannot locate configuration file\n";
     return 1;
   }
   
-  // 2. Ensure files and directories are created
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // 3 overwirte defaults
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  syncVolumes = ( conf.SyncVolumes == "yes") ? 1 : 0;
+  syncPeriods = conf.SyncVolumesInterval;
+  
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // 4. Ensure files and directories are created
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   utility::folders_create( conf.DispatcherLogPrefix );
   utility::folders_create( conf.TempMountPoint );
   utility::folders_create( conf.TargetFilesystemMountPoint );
@@ -115,8 +136,14 @@ int main ( int argc, char* argv[] ) {
     std::cout << "error: failed to create volume file\n";
     return 1;
   }
-    
-  // 3. Object Instantiation  
+  if (!utility::file_create(conf.SyncDatesFile)){
+    std::cout << "error: failed to create sync file\n";
+    return 1;
+  }  
+  
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // 5. Object Instantiation  
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   _loglevel = conf.DispatcherLoglevel;
   Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
   
@@ -129,8 +156,11 @@ int main ( int argc, char* argv[] ) {
   Volumes volumes( conf.TempMountPoint, conf.VolumeFilePath, conf.MaxIdleDisk );
   volumes.set_logger_att ( _onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel );
   
-    
-  // 4. ensure that volumes are mounted
+  Sync sync( conf.SyncDatesFile, utility::to_string(conf.SyncVolumesInterval) );
+  sync.set_logger_att ( _onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel );
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // 6. ensure that volumes are mounted
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   if ( !ensure_mounted(volumes, logger) ){
     std::cout << "error: target filesystem " 
               << conf.TargetFilesystemMountPoint 
@@ -138,13 +168,16 @@ int main ( int argc, char* argv[] ) {
     return 1;
   }
  
-  
-  // 5. get the hostname and the Amazon Instance Id for this machine
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // 7. get the hostname and the Amazon Instance Id for this machine
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   hostname    = utility::get_hostname();
   instance_id = utility::get_instance_id();
 
-  // 6. Populating ports array. These ports are there to be able to communicate
-  // with multiple clients at once
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // 8. Populating ports array. 
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // These ports are there to be able to communicate with multiple clients at once
   portsArray = new Port[10];
   populate_port_array();
 
@@ -154,23 +187,26 @@ int main ( int argc, char* argv[] ) {
   // Core Functionality
   // -------------------------------------------------------------------
   int value;
+  int latestSyncDate;
+  
   while ((true) && (!sigterm) ){
 
-    // ~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // 1. maintain snapshots
-    // ~~~~~~~~~~~~~~~~~~~~~~~
-    std::string output;
-    logger.log( "debug", "", "volsd", 1, "check if we need to create a new snapshot" );
-    if ( ( snapshots.renew() )  || ( snapshots.size() <  conf.SnapshotMaxNumber ) ){
-      std::thread createSnapshot_thread( createSnapshot_handler, std::ref(snapshots) );
-      createSnapshot_thread.detach();
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    std::cout << "SS Size: " << snapshots.size() << "\n";
+    if ( ( snapshots.size() <  conf.SnapshotMaxNumber ) || (!snapshotsOpPending) ) {
+      // check the time
+      if ( snapshots.timeToSnapshot() ){
+        snapshotsOpPending = 1;
+        std::thread createSnapshot_thread( createSnapshot_handler, std::ref(snapshots) );
+        createSnapshot_thread.detach();
+      }
     }
-    logger.log( "debug", "", "volsd", 1, "No need to create new snapshot" );
-    
-    /*
-    // ~~~~~~~~~~~~~~~~~~~~~~~
-    // 1. maintain volumes
-    // ~~~~~~~~~~~~~~~~~~~~~~~
+        
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // 2. maintain volumes count
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     value = volumes.get_idle_number() + inProgressVolumes;
     if ( value < conf.MaxIdleDisk ){
       
@@ -192,8 +228,19 @@ int main ( int argc, char* argv[] ) {
       removeDisk_thread.detach();
     }
     
-    
-    */  
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // 3. Sync volumes Periodically
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    if ( ( syncVolumes ) && (!syncingOpPending) ){
+      // check the time
+      if ( sync.timeToSync() ){
+      syncingOpPending = 1;
+        std::thread volumesSync_thread( volumesSync_handler, std::ref(snapshots), 
+                                        std::ref(volumes),   std::ref(sync));
+        volumesSync_thread.detach();  
+      }
+    }
+  
     sleep(10);
   }
   
@@ -323,7 +370,9 @@ void volumesDispatcher_handler( Volumes &volumes ){
   // -------------------------------------------------------------------
   void clientDiskAquire_handler(int portNo, std::string request, std::string ip, Volumes& volumes, 
                          int transId) {
-
+    
+    diskAcquireOpPending = 1;
+    
     Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
     
     logger.log("debug", "", "volsd", transId, "awaiting clinet to connect tp port:[" + 
@@ -418,6 +467,7 @@ void volumesDispatcher_handler( Volumes &volumes ){
     // labling port as not used
     portsArray[portNo-9000-1].status=false;
 		
+    diskAcquireOpPending = 0;
   }
 
 
@@ -426,7 +476,9 @@ void volumesDispatcher_handler( Volumes &volumes ){
   // -------------------------------------------------------------------
   void clientDiskRelease_handler(Volumes &volumes, const std::string t_volumeId, 
                                  const int t_transactionId ) {
-	
+	  
+    diskReleaseOpPending = 1;
+    
     Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
 		    
     //check if vol exist
@@ -452,6 +504,7 @@ void volumesDispatcher_handler( Volumes &volumes ){
     
     logger.log("info", "", "volsd", t_transactionId, "volume:[" + t_volumeId + 
               "] was removed from volumes list");
+    diskReleaseOpPending = 0;
   }
    
 
@@ -515,20 +568,114 @@ void volumesDispatcher_handler( Volumes &volumes ){
   }
   
   	
-    
+  // -------------------------------------------------------------------
+  // TASK: Create Snapshots 
+  // -------------------------------------------------------------------  
   void createSnapshot_handler( Snapshots& snapshots ) {
     
     Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
     
-    //this variables tells the termination signal handler function if there is operation going on
-    snapshotsOpPending = 1;
-    
+    logger.log( "info", "", "volsd", 1, "create new snapshot" );	
     if (!snapshots.create_snapshot(conf.TargetFilesystem, conf.SnapshotFrequency)){
       logger.log( "error", "", "volsd", 1, "could not create new snapshot" );	
     }
+    
     snapshotsOpPending = 0;
   }
   
+  
+  
+  // -------------------------------------------------------------------
+  // TASK:Volumes Sync
+  // -------------------------------------------------------------------
+  void volumesSync_handler( Snapshots& s, Volumes& volumes , Sync& sync){
+    
+    Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
+    
+    
+    logger.log( "info", "", "volsd", 4, "Syncing all volumes to " + conf.TargetFilesystem );	
+    // get a reference to the volumes list. We are using a referece rather than getting a copy for 
+    // the list simply because the list get updated all the time, and sync is a lengthy operation. 
+    // A problem will arrise when a volumes got removed from the list and the synchronizer goes and 
+    // sync it
+    std::vector<utility::Volume> v = volumes.get_list();
+    for(std::vector<utility::Volume>::iterator it = v.begin(); it != v.end(); ++it) {
+      if ( it->attachedTo == "localhost" ) {
+        sync.synchronize( conf.TargetFilesystemMountPoint, it->mountPoint, 4 );  
+      } else {
+        sync.synchronize( conf.TargetFilesystemMountPoint, it->attachedTo + ":" + it->mountPoint, 4 );  
+      }
+    }
+    
+    sync.setSyncTime();
+      
+    syncingOpPending = 0;
+  }
+  
+  
+  // -------------------------------------------------------------------
+  // Signal handler
+  // -------------------------------------------------------------------
+  void signalHandler( int signum ) {
+
+   switch(signum){
+     case SIGHUP: // restart
+     case SIGTERM: // graceful stop
+     case SIGINT: 
+       signalCount++;
+       // calculate how many times any of the above signals issued.
+       if (signalCount == 1){
+        
+         // 1. set the semaphor var to 1 so that threads knows that they should exit
+         sigterm = 1;
+         
+         // BAD->HACK SOLUTION: since the server socket is waiting to accept connection, we cannot 
+         // terminate the thread because accept is a blocking method. The only way is to connect to 
+         // the socket that will make a connection to the socket. Once we pass the accept method, 
+         // then the while loop will exit since it have !sigterm as condition.
+         server->close_socket();
+
+         // 2 Stop volumeDispatcher thread         
+         ClientSocket client_socket ( "localhost", 9000 );
+         client_socket << "";
+         client_socket.close_socket();
+         volumesDispatcher_thread.join();
+
+         // 3 check if main program have some opreation
+         while (snapshotsOpPending){
+           std::cout << "waiting for snaphshot thread to finish\n";
+           sleep(1);
+         }
+         
+         while (diskCreateOpPending){
+           std::cout << "waiting for DiskCreate operation to finish\n";
+           sleep(1);
+         }
+         
+         while (diskRemoveOpPending){
+           std::cout << "waiting for DiskRemove operation to finish\n";
+           sleep(1);
+         }
+         
+         while (diskAcquireOpPending){
+           std::cout << "waiting for DiskAcquire operation to finish\n";
+           sleep(1);
+         }
+         
+         while (diskReleaseOpPending){
+           std::cout << "waiting for DiskRelease operation to finish\n";
+           sleep(1);
+         }
+       }
+       break;
+       
+     default:
+       break; 
+   }
+
+   exit(signum);  
+}
+
   // -------------------------------------------------------------------
   // POPULATE_PORT_ARRAY
   // -------------------------------------------------------------------
@@ -637,6 +784,9 @@ void volumesDispatcher_handler( Volumes &volumes ){
   }
   
   
+  // -------------------------------------------------------------------
+  // Ensure Mounted 
+  // -------------------------------------------------------------------
   int ensure_mounted(Volumes &volumes, Logger &logger){
     
     // add attach part to this
@@ -663,52 +813,4 @@ void volumesDispatcher_handler( Volumes &volumes ){
   }
 
 
-void signalHandler( int signum ) {
-
-   switch(signum){
-     case SIGHUP: // restart
-     case SIGTERM: // graceful stop
-     case SIGINT: 
-       signalCount++;
-       // calculate how many times any of the above signals issued.
-       if (signalCount == 1){
-        
-         // 1. set the semaphor var to 1 so that threads knows that they should exit
-         sigterm = 1;
-         
-         // BAD->HACK SOLUTION: since the server socket is waiting to accept connection, we cannot 
-         // terminate the thread because accept is a blocking method. The only way is to connect to 
-         // the socket that will make a connection to the socket. Once we pass the accept method, 
-         // then the while loop will exit since it have !sigterm as condition.
-         server->close_socket();
-
-         // 2 Stop volumeDispatcher thread         
-         ClientSocket client_socket ( "localhost", 9000 );
-         client_socket << "";
-         client_socket.close_socket();
-         volumesDispatcher_thread.join();
-
-         // 3 check if main program have some opreation
-         while (snapshotsOpPending){
-           std::cout << "waiting for snahpt thread to finish: " << snapshotsOpPending << "\n";
-           sleep(1);
-         }
-         
-         while (diskCreateOpPending){
-           std::cout << "waiting for volumes manaber thread to finish\n";
-           sleep(1);
-         }
-         
-         while (diskRemoveOpPending){
-           std::cout << "waiting for volumes manaber thread to finish\n";
-           sleep(1);
-         }
-       }
-       break;
-       
-     default:
-       break; 
-   }
-
-   exit(signum);  
-}
+  

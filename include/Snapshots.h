@@ -52,7 +52,7 @@ class Snapshots {
 		//std::string get_latest(std::string select, Logger& logger);
     int latest( std::string &t_snapshotId );
     std::string latest_date( );
-    int renew();
+    int timeToSnapshot();
     int load();
     int size();
     void print();

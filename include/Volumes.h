@@ -90,7 +90,11 @@ class Volumes
     std::string get_device();
     std::string get_device(std::vector<std::string>& list);
      
-     void printxyz();
+    void printxyz();
+    
+    std::vector<utility::Volume>& get_list();
+  
+
 
 };
 

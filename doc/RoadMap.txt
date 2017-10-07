@@ -1,7 +1,30 @@
-Volumes
+Volumes + sync
 - adds an entry in the /etc/fstab for the mounted disk
+- Removing the syncing from inside the sync.cpp file and put it in a separate file (think about it)
 
+- Problem:
+  Syncing to a remote server requires login. We cannot use root since root login 
+  is bad. We need to create a special user for this purpose. 
 
+Idea #1 
+  For server: create setup script that runs one time to do the following:
+      1. Setup a new user with /bin/rssh
+      2. Put amazon key there
+      3. grant permissions to read from files/dir
+      NOTE: volsd program will run as root, it will only user volsd user for rsync.
+
+  For Client: create a user-data script that do the following:
+      1. In the user-data section, do the same as above
+      2. download volsd-client
+      3. run > volsd-client -a /home/cde.
+      NOTE: volsd-client can run as root, no problem
+      NOTE: The user can run an instaltion script on an EC2 server ( step #1 ), 
+            then save it as image. This way, the user-data will only perform 
+            step #2 and #3
+      NOTE: The user can do (step 1 and 2) on an EC2 server, then save
+            it as image. This way, the user-data will only run the client 
+            program step #3
+      
 utility
 - Put the parse_args function in utilities
 - redo the configuration load to a better way to avoid writing it more than one time
@@ -14,8 +37,8 @@ volsd
 - Logger is defined in every handler. Make a global one for volsd
 
 
-sync
-- Removing the syncing from inside the sync.cpp file and put it in a separate file (think about it)
+
+
 
 
 General 
@@ -23,6 +46,7 @@ General
 - Create a sync class so it can be used by dispatcher and synchroziner and Volumes class
 - start a cleaner thread that check if volumes are correct
 - move the diskinfo, snapshots files to aws
+- ** Think about implement the concept of pulling rather than pushing for syncing. This means thaat the client will be a program running continusly on client macbihne, The server will send a signal for client to update data, the client will pull new data.
 
 Logger
 - remove '2017' from logger

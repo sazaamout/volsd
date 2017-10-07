@@ -1029,3 +1029,7 @@ int Volumes::acquire( const std::string t_targetFileSystem, const std::string t_
 
   return 1;
 }
+
+std::vector<utility::Volume>& Volumes::get_list(){
+  return m_volumes;
+}  

@@ -191,88 +191,95 @@ namespace utility
     
     std::fstream myFile;
     myFile.open(conf_file.c_str());
-   
+    
     if (!myFile.is_open()) 
       return 0;
     
     
     std::string line;
-    
+    std::string key, value;
     while (std::getline(myFile, line))
     {
-      if ( (line[0] == '#') || (line[1] == '#') || (line[0] == '\n')){
+      if ( (line[0] == '#') || (line[1] == '#') || (line[0] == '\n') || (line == "")){
         continue;
-      }
+      } 
+        std::stringstream ss(line);
+        ss >> key >> value;
       
-      if (line.find("Hostname") != std::string::npos) {
-        conf.Hostname = line.substr(line.find(" ")+1);
-      }else if (line.find("MaxIdleDisk") != std::string::npos) 
-        conf.MaxIdleDisk = utility::to_int(line.substr(line.find(" ")+1));
-      else if (line.find("TargetFilesystemMountPoint") != std::string::npos)
-        conf.TargetFilesystemMountPoint = line.substr(line.find(" ")+1);
-      else if (line.find("TargetFilesystemDevice") != std::string::npos) 
-        conf.TargetFilesystemDevice = line.substr(line.find(" ")+1);
-      else if (line.find("TargetFilesystem") != std::string::npos) 
-        conf.TargetFilesystem = line.substr(line.find(" ")+1);
-      else if (line.find("TempMountPoint") != std::string::npos) 
-        conf.TempMountPoint = line.substr(line.find(" ")+1);
-      else if (line.find("SnapshotFrequency") != std::string::npos) 
-        conf.SnapshotFrequency = utility::to_int(line.substr(line.find(" ")+1));
-      else if (line.find("SnapshotFile") != std::string::npos) 
-        conf.SnapshotFile = line.substr(line.find(" ")+1);
-      else if (line.find("SnapshotFileStorage") != std::string::npos) 
-        conf.SnapshotFileStorage = utility::to_int(line.substr(line.find(" ")+1));
-      else if (line.find("SnapshotMaxNumber") != std::string::npos) 
-        conf.SnapshotMaxNumber = utility::to_int(line.substr(line.find(" ")+1));
-      else if (line.find("VolumeFilePath") != std::string::npos)  
-        conf.VolumeFilePath = line.substr(line.find(" ")+1);
-      else if (line.find("ManagerLogFile") != std::string::npos) 
-        conf.ManagerLogFile = line.substr(line.find(" ")+1);
-      else if (line.find("DispatcherLogPrefix") != std::string::npos) 
-        conf.DispatcherLogPrefix = line.substr(line.find(" ")+1);
-      else if (line.find("ClientLogFile") != std::string::npos) 
-        conf.ClientLogFile = line.substr(line.find(" ")+1);
-      else if (line.find("DispatcherLoglevel") != std::string::npos) 
-        conf.DispatcherLoglevel = utility::to_int(line.substr(line.find(" ")+1));
-      else if (line.find("ClientLoglevel") != std::string::npos) 
-        conf.ClientLoglevel = utility::to_int(line.substr(line.find(" ")+1));
+
       
-      else if (line.find("SyncVolumes") != std::string::npos) 
-        conf.SyncVolumes = line.substr(line.find(" ")+1);
-      else if (line.find("SyncVolumesInterval") != std::string::npos) 
-        conf.SyncVolumesInterval = utility::to_int(line.substr(line.find(" ")+1));
-      else if (line.find("SyncRequestsFile") != std::string::npos) 
-        conf.SyncRequestsFile = line.substr(line.find(" ")+1);
-      else if (line.find("SyncLogPrefix") != std::string::npos) 
-        conf.SyncLogPrefix = line.substr(line.find(" ")+1);              
-      else if (line.find("SyncLogLevel") != std::string::npos) 
-        conf.SyncLogLevel = utility::to_int(line.substr(line.find(" ")+1));          
-      else if (line.find("SyncDatesFile") != std::string::npos) 
-        conf.SyncDatesFile = line.substr(line.find(" ")+1);
-      else if (line.find("SyncServicePort") != std::string::npos) 
-        conf.SyncServicePort = utility::to_int(line.substr(line.find(" ")+1));
-      else if (line.find("SyncOutputEmailTo") != std::string::npos) 
-        conf.SyncOutputEmailTo = line.substr(line.find(" ")+1);
-      else if (line.find("SyncErrorEmailTo") != std::string::npos) 
-        conf.SyncErrorEmailTo = line.substr(line.find(" ")+1);  
-      else if (line.find("EmailSyncOutput") != std::string::npos) 
-        conf.EmailSyncOutput = line.substr(line.find(" ")+1);
-      else if (line.find("EmailSyncError") != std::string::npos) 
-        conf.EmailSyncError = line.substr(line.find(" ")+1);  
-      else if (line.find("LocalRsyncCommand") != std::string::npos) 
-        conf.LocalRsyncCommand = line.substr(line.find(" ")+1);
-      else if (line.find("RemoteRsyncCommand") != std::string::npos) 
-        conf.RemoteRsyncCommand = line.substr(line.find(" ")+1);  
-      else if (line.find("EmailPushOutput") != std::string::npos) 
-        conf.EmailPushOutput = line.substr(line.find(" ")+1);
-      else if (line.find("EmailPushError") != std::string::npos) 
-        conf.EmailPushError = line.substr(line.find(" ")+1);
-      else if (line.find("EmailPushEmail") != std::string::npos) 
-        conf.EmailPushEmail = line.substr(line.find(" ")+1);
+      
+      if ( key == "Hostname") {
+        conf.Hostname = value;
+      }else if (key == "MaxIdleDisk") 
+        conf.MaxIdleDisk = utility::to_int(value);
+      else if ( key == "TargetFilesystemMountPoint" )
+        conf.TargetFilesystemMountPoint = value;
+      else if (key == "TargetFilesystemDevice" ) 
+        conf.TargetFilesystemDevice = value;
+      else if (key == "TargetFilesystem" ) 
+        conf.TargetFilesystem = value;
+      else if ( key == "TempMountPoint" ) 
+        conf.TempMountPoint = value;
+      else if ( key == "SnapshotFrequency" ) 
+        conf.SnapshotFrequency = utility::to_int(value);
+      else if ( key == "SnapshotFile" ) 
+        conf.SnapshotFile = value;
+      else if ( key == "SnapshotFileStorage" ) 
+        conf.SnapshotFileStorage = utility::to_int(value);
+      else if ( key == "SnapshotMaxNumber" ) 
+        conf.SnapshotMaxNumber = utility::to_int(value);
+      else if ( key == "VolumeFilePath" )  
+        conf.VolumeFilePath = value;
+      else if ( key == "ManagerLogFile" ) 
+        conf.ManagerLogFile = value;
+      else if ( key == "DispatcherLogPrefix" ) 
+        conf.DispatcherLogPrefix = value;
+      else if ( key == "ClientLogFile" ) 
+        conf.ClientLogFile = value;
+      else if ( key == "DispatcherLoglevel" ) 
+        conf.DispatcherLoglevel = utility::to_int(value);
+      else if ( key == "ClientLoglevel" ) 
+        conf.ClientLoglevel = utility::to_int(value);
+      
+      else if ( key == "SyncVolumes" ) 
+        conf.SyncVolumes = value;
+      else if ( key == "SyncVolumesInterval" ) 
+        conf.SyncVolumesInterval = utility::to_int(value);
+      else if ( key == "SyncRequestsFile" ) 
+        conf.SyncRequestsFile = value;
+      else if ( key == "SyncLogPrefix" ) 
+        conf.SyncLogPrefix = value;          
+      else if ( key == "SyncLogLevel" ) 
+        conf.SyncLogLevel = utility::to_int(value);          
+      else if ( key == "SyncDatesFile" ) 
+        conf.SyncDatesFile = value;
+      else if ( key == "SyncServicePort" ) 
+        conf.SyncServicePort = utility::to_int(value);
+      else if ( key == "SyncOutputEmailTo" ) 
+        conf.SyncOutputEmailTo = value;
+      else if ( key == "SyncErrorEmailTo" ) 
+        conf.SyncErrorEmailTo = value;
+      else if ( key == "EmailSyncOutput" ) 
+        conf.EmailSyncOutput = value;
+      else if ( key == "EmailSyncError" ) 
+        conf.EmailSyncError = value;
+      else if ( key == "LocalRsyncCommand" ) 
+        conf.LocalRsyncCommand = value;
+      else if ( key == "RemoteRsyncCommand" ) 
+        conf.RemoteRsyncCommand = value;
+      else if ( key == "EmailPushOutput" ) 
+        conf.EmailPushOutput = value;
+      else if ( key == "EmailPushError" ) 
+        conf.EmailPushError = value;
+      else if ( key == "EmailPushEmail" ) 
+        conf.EmailPushEmail = value;
       else continue;
 
       line="";
+      
     }
+    
     myFile.close(); 
     
     return 1;

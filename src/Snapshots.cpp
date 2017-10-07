@@ -1,7 +1,5 @@
 // TODO:
 // 1. store data to s3
-// 3. finish re-implementing the rest of functions
-
 
 #include "Snapshots.h"
 
@@ -37,7 +35,7 @@ int Snapshots::size(){
 // =================================================================================================
 // Function: 
 // =================================================================================================
-int Snapshots::renew() {
+int Snapshots::timeToSnapshot() {
   // get the current time 
   std::string current_timestamp = utility::unixTime();
   
@@ -47,7 +45,7 @@ int Snapshots::renew() {
   int diff = stol(date) - stol(current_timestamp);
   
   if (diff < 0) diff = diff * (-1);
-  
+  std::cout << "Snapshot diff " << diff << "\n"; 
   if ( diff < ( m_snapshotFreq * 60 ) ){
     return 0; // dont renew
   } else {
@@ -161,8 +159,6 @@ int Snapshots::update_snapshots( const Snapshot t_snapshot ) {
 // =================================================================================================
 std::string Snapshots::latest_date(){
   
-  logger->log("debug", "", "volsd", 1, "looking for latest snapshot", "get_latest");  
-  
   if (m_snapshots.empty())
     return "654369275";
  
@@ -201,6 +197,7 @@ int Snapshots::load(){
   } 
   
   if (m_snapshotFileStorage == "s3") {
+    //Aws::S3 s3( const std::string t_awsCmd, const std::string t_region )
   } 
   
   // 1) open the file, and load all volume info in the array
