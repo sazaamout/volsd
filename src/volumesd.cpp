@@ -1,5 +1,3 @@
-// TODO:when a clinet makes a request, and server shutdown, this is not graceful. Fix
-
 #include <string>
 #include <iostream>
 #include <thread>
@@ -244,13 +242,18 @@ int main ( int argc, char* argv[] ) {
     sleep(10);
   }
   
-  std::cout << "main program exited\n";
+  
   return 1;
 }
 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Functions 
+// Functions Implementaion
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Volumes Dispatcher Handler Function
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 void volumesDispatcher_handler( Volumes &volumes ){
@@ -262,13 +265,8 @@ void volumesDispatcher_handler( Volumes &volumes ){
   Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
   logger.log("info", "", "volsd", 0, "volumes dispatcher started");
     
-  // -------------------------------------------------------------------
-  // Core Functionality
-  // -------------------------------------------------------------------
   try {
-    // Create the socket
-    //ServerSocket server( 9000 );
-    server = new ServerSocket( 9000 ); 
+    ServerSocket server( 9000 ); 
 
     while (( true ) && ( !sigterm ))
     {
@@ -278,10 +276,10 @@ void volumesDispatcher_handler( Volumes &volumes ){
       ServerSocket new_sock;
       
       // Accept the incoming connection
-      server->accept ( new_sock );
+      server.accept ( new_sock );
 
       // client Ip address		  
-      cip = server->client_ip();
+      cip = server.client_ip();
 
       logger.log("info", "", "volsd", transId, "incoming connection accepted from " + cip);
       
@@ -366,7 +364,7 @@ void volumesDispatcher_handler( Volumes &volumes ){
   
   
   // -------------------------------------------------------------------
-  // TASK: Disk Request
+  // Client Disk Acquire Handler Function
   // -------------------------------------------------------------------
   void clientDiskAquire_handler(int portNo, std::string request, std::string ip, Volumes& volumes, 
                          int transId) {
@@ -472,7 +470,7 @@ void volumesDispatcher_handler( Volumes &volumes ){
 
 
   // -------------------------------------------------------------------
-  // clientDiskRelease_handler
+  // Client Disk Release Handler Function
   // -------------------------------------------------------------------
   void clientDiskRelease_handler(Volumes &volumes, const std::string t_volumeId, 
                                  const int t_transactionId ) {
@@ -509,7 +507,7 @@ void volumesDispatcher_handler( Volumes &volumes ){
    
 
   // -------------------------------------------------------------------
-  // TASK: Create Disk
+  // Create Disk Handler Function
   // -------------------------------------------------------------------
   void createDisk_handler(Snapshots& snapshot, Volumes& volumes, const int t_transactionId){
     
@@ -541,7 +539,7 @@ void volumesDispatcher_handler( Volumes &volumes ){
 
 
   // -------------------------------------------------------------------
-  // TASK: Remove Disk 
+  // Remove Disk Handler Function
   // -------------------------------------------------------------------
   void removeDisk_handler(Snapshots& s, Volumes& volumes, const int t_transactionId) {
 	  
@@ -569,7 +567,7 @@ void volumesDispatcher_handler( Volumes &volumes ){
   
   	
   // -------------------------------------------------------------------
-  // TASK: Create Snapshots 
+  // Create Snapshots Handler Function
   // -------------------------------------------------------------------  
   void createSnapshot_handler( Snapshots& snapshots ) {
     
@@ -586,7 +584,7 @@ void volumesDispatcher_handler( Volumes &volumes ){
   
   
   // -------------------------------------------------------------------
-  // TASK:Volumes Sync
+  // Volumes Sync Handler Function
   // -------------------------------------------------------------------
   void volumesSync_handler( Snapshots& s, Volumes& volumes , Sync& sync){
     
@@ -614,7 +612,7 @@ void volumesDispatcher_handler( Volumes &volumes ){
   
   
   // -------------------------------------------------------------------
-  // Signal handler
+  // Signal Handler Function 
   // -------------------------------------------------------------------
   void signalHandler( int signum ) {
 
@@ -629,13 +627,12 @@ void volumesDispatcher_handler( Volumes &volumes ){
          // 1. set the semaphor var to 1 so that threads knows that they should exit
          sigterm = 1;
          
+         // 2 Stop volumeDispatcher thread         
          // BAD->HACK SOLUTION: since the server socket is waiting to accept connection, we cannot 
          // terminate the thread because accept is a blocking method. The only way is to connect to 
          // the socket that will make a connection to the socket. Once we pass the accept method, 
          // then the while loop will exit since it have !sigterm as condition.
-         server->close_socket();
-
-         // 2 Stop volumeDispatcher thread         
+         //server->close_socket();
          ClientSocket client_socket ( "localhost", 9000 );
          client_socket << "";
          client_socket.close_socket();
@@ -666,6 +663,8 @@ void volumesDispatcher_handler( Volumes &volumes ){
            std::cout << "waiting for DiskRelease operation to finish\n";
            sleep(1);
          }
+         
+         
        }
        break;
        
@@ -676,8 +675,9 @@ void volumesDispatcher_handler( Volumes &volumes ){
    exit(signum);  
 }
 
+
   // -------------------------------------------------------------------
-  // POPULATE_PORT_ARRAY
+  // Populate Ports array Function
   // -------------------------------------------------------------------
   void populate_port_array() {
     for (int i=0; i<10; i++) {
@@ -688,7 +688,7 @@ void volumesDispatcher_handler( Volumes &volumes ){
 
 
   // -------------------------------------------------------------------
-  // GET_AVAILABLE_PORT
+  // Get Available Port Function
   // -------------------------------------------------------------------
   int get_available_port() {
     for (int i=0; i<10; i++) {
@@ -702,7 +702,7 @@ void volumesDispatcher_handler( Volumes &volumes ){
 
 
   // -------------------------------------------------------------------
-  // PRINT_PORTS
+  // Print Ports Function
   // -------------------------------------------------------------------
   void print_ports() {
     std::cout << " | ";
@@ -714,7 +714,7 @@ void volumesDispatcher_handler( Volumes &volumes ){
 
 
   // -------------------------------------------------------------------
-  // GET_PORTS
+  // Get Ports Function
   // -------------------------------------------------------------------
   std::string get_ports() {
 
@@ -731,7 +731,7 @@ void volumesDispatcher_handler( Volumes &volumes ){
   }
 
   // -------------------------------------------------------------------
-  // Get_Arguments 
+  // Get Arguments Function
   // -------------------------------------------------------------------
   void get_arguments( int argc, char **argv ) {
 
@@ -785,7 +785,7 @@ void volumesDispatcher_handler( Volumes &volumes ){
   
   
   // -------------------------------------------------------------------
-  // Ensure Mounted 
+  // Ensure Mounted Function
   // -------------------------------------------------------------------
   int ensure_mounted(Volumes &volumes, Logger &logger){
     
