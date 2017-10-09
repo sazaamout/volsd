@@ -47,6 +47,8 @@ General
 - start a cleaner thread that check if volumes are correct
 - move the diskinfo, snapshots files to aws
 - ** Think about implement the concept of pulling rather than pushing for syncing. This means thaat the client will be a program running continusly on client macbihne, The server will send a signal for client to update data, the client will pull new data.
+- when a volume failed to attach becouse of an os problem, restarting the server fixes it. Try to catch this case in your program/
+
 
 Logger
 - remove '2017' from logger

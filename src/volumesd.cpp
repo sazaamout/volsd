@@ -59,7 +59,7 @@
   int ensure_mounted(Volumes &volumes, Logger &logger);
 
   // thread related functions
-  void volumesDispatcher_handler( Volumes &volumes );
+  void volumesDispatcher_handler( Volumes &volumes, Snapshots& snapshots, Sync& sync );
   void clientDiskAquire_handler(int portNo, std::string request, std::string ip, Volumes &volumes, 
                                 int transId);
   void clientDiskRelease_handler( Volumes &volumes, const std::string t_volumeId, 
@@ -71,6 +71,7 @@
   void removeSnapshot_handler( Snapshots& snapshots );
   
   void volumesSync_handler( Snapshots& s, Volumes& volumes, Sync& sync);
+  //void SyncRequests_handler( Volumes &volumes );
   
   void signalHandler( int signum );
   
@@ -81,6 +82,7 @@ using namespace std;
 using namespace utility;
   
 int main ( int argc, char* argv[] ) {
+
 
   // user must be root
   if (!utility::is_root()){
@@ -179,7 +181,10 @@ int main ( int argc, char* argv[] ) {
   portsArray = new Port[10];
   populate_port_array();
 
-  volumesDispatcher_thread = std::thread( volumesDispatcher_handler, std::ref(volumes));
+  volumesDispatcher_thread = std::thread( volumesDispatcher_handler, 
+                                          std::ref(volumes), 
+                                          std::ref(snapshots), 
+                                          std::ref(sync));
   
   // -------------------------------------------------------------------
   // Core Functionality
@@ -192,7 +197,6 @@ int main ( int argc, char* argv[] ) {
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // 1. maintain snapshots
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    std::cout << "SS Size: " << snapshots.size() << "\n";
     if ( ( snapshots.size() <  conf.SnapshotMaxNumber ) || (!snapshotsOpPending) ) {
       // check the time
       if ( snapshots.timeToSnapshot() ){
@@ -232,7 +236,7 @@ int main ( int argc, char* argv[] ) {
     if ( ( syncVolumes ) && (!syncingOpPending) ){
       // check the time
       if ( sync.timeToSync() ){
-      syncingOpPending = 1;
+        syncingOpPending = 1;
         std::thread volumesSync_thread( volumesSync_handler, std::ref(snapshots), 
                                         std::ref(volumes),   std::ref(sync));
         volumesSync_thread.detach();  
@@ -252,18 +256,18 @@ int main ( int argc, char* argv[] ) {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Volumes Dispatcher Handler Function
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // -------------------------------------------------------------------
+  // Volumes Dispatcher Handler Function
+  // -------------------------------------------------------------------
 
-  void volumesDispatcher_handler( Volumes &volumes ){
+  void volumesDispatcher_handler( Volumes &volumes, Snapshots& snapshots, Sync& sync){
     
     std::string request, ack, cip;
     std::string msg;
     int transId;
     
     Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
-    logger.log("info", "", "volsd", 0, "volumes dispatcher started");
+    logger.log("info", "", "volsd", 0, "volumes dispatcher started", "VD");
       
     try {
       ServerSocket server( 9000 ); 
@@ -272,7 +276,7 @@ int main ( int argc, char* argv[] ) {
       {
         
         transId = utility::get_transaction_id();
-        logger.log("debug", "", "volsd", 0, "waiting for requests from clients ...");
+        logger.log("debug", "", "volsd", 0, "waiting for requests from clients ...", "VD");
         ServerSocket new_sock;
         
         // Accept the incoming connection
@@ -281,7 +285,7 @@ int main ( int argc, char* argv[] ) {
         // client Ip address      
         cip = server.client_ip();
 
-        logger.log("info", "", "volsd", transId, "incoming connection accepted from " + cip);
+        logger.log("info", "", "volsd", transId, "incoming connection accepted from " + cip, "VD");
         
         try {
           while ( true ) 
@@ -296,13 +300,13 @@ int main ( int argc, char* argv[] ) {
               // the reply to the client will be a communication port. The new port is used as
               // communication channel between the dispatcher and the client.
               logger.log("info", "", "volsd", transId, "request:[" + request + "] from client:[" + 
-                         cip + "]");
+                         cip + "]", "VD");
               int availablePort = get_available_port();
               new_sock << utility::to_string(availablePort);
 
               logger.log( "debug", "", "volsd", transId, 
                           "reserving port:[" + utility::to_string(availablePort) + "] to client:[" + 
-                          cip + "]"
+                          cip + "]", "VD"
               );
 
               new_sock.close_socket();
@@ -322,12 +326,12 @@ int main ( int argc, char* argv[] ) {
               
               // DiskRelease request format: "DiskRelease:volId"
               logger.log("info", "", "volsd", transId, "request:[" + request + "] from client:[" + 
-                         cip + "]");
+                         cip + "]", "VD");
               std::string volId = request.substr( request.find(":")+1, request.find("\n") );  
             
               if ( (volId == "") || (volId == " ") ) {
                 logger.log("error", "", "volsd", transId, 
-                           "client did not supply volume id to release");
+                           "client did not supply volume id to release", "VD");
                 new_sock.close_socket();
                 break;
               }
@@ -341,22 +345,37 @@ int main ( int argc, char* argv[] ) {
               new_sock.close_socket();
               break;
                   
+            } else if ( request.find("SyncAll") != std::string::npos ) {
+              
+              logger.log("info", "", "volsd", transId, "request:[" + request + "] from client:[" + 
+                         cip + "]", "VD");
+              // start a new thread which will listen on the port sent to the client. 
+              // this thread will handle the disk request
+              syncingOpPending = 1;
+              
+              std::thread volumesSync_thread( volumesSync_handler, 
+                                              std::ref(snapshots), 
+                                              std::ref(volumes),   
+                                              std::ref(sync));
+              volumesSync_thread.detach();  
+              new_sock.close_socket();
+              break;
             } else {
               
               msg = "unknown request, shutting down connection\n";
               logger.log("error", "", "volsd", transId, "unknown request:[" + request + 
-                         "], shutting down connection");
+                         "], shutting down connection", "VD");
               new_sock << msg;
               new_sock.close_socket();
               break;
             }
           } // end while
         } catch ( SocketException& e) {
-          logger.log("error", "", "volsd", transId, "Exception was caught: " + e.description());
+          logger.log("error", "", "volsd", transId, "Exception was caught: " + e.description(), "VD");
         }
       } // end of outer while
     } catch ( SocketException& e ) {
-      logger.log("error", "", "volsd", transId, "Exception was caught: " + e.description());
+      logger.log("error", "", "volsd", transId, "Exception was caught: " + e.description(), "VD");
     }
     
     return;
@@ -374,7 +393,7 @@ int main ( int argc, char* argv[] ) {
     Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
     
     logger.log("debug", "", "volsd", transId, "awaiting clinet to connect tp port:[" + 
-               utility::to_string(portNo) + "]" );
+               utility::to_string(portNo) + "]", "VA" );
     
     std::string msg, ack;
     
@@ -388,26 +407,29 @@ int main ( int argc, char* argv[] ) {
     if (res == -1) {
       s << "MaxDisksReached";
       portsArray[portNo-9000-1].status=false;
+      diskAcquireOpPending = 0;
       return;
     }
       
     if (res == -2){
       s << "umountFailed";
       portsArray[portNo-9000-1].status=false;
+      diskAcquireOpPending = 0;
       return;
     }
       
     if (res == -3){
       s << "detachFailed";
       portsArray[portNo-9000-1].status=false;
+      diskAcquireOpPending = 0;
       return;
     }
     
-    logger.log("info", "", "volsd", transId, "sending to client volume:[" + volumeId + "]");
+    logger.log("info", "", "volsd", transId, "sending volume:[" + volumeId + "] to client", "VA");
     
     try {
       s << volumeId;
-      logger.log("info", "", "volsd", transId, "waiting for ACK from Client" );
+      logger.log("info", "", "volsd", transId, "waiting for ACK from Client", "VA");
       
       // Client response
       s >> ack;
@@ -419,46 +441,47 @@ int main ( int argc, char* argv[] ) {
       // remove volumes from m_volumes
       volumes.remove(volumeId, transId);
       
-      logger.log("info", "", "volsd", transId, "removing volume from anazone space");      
+      logger.log("info", "", "volsd", transId, "removing volume from anazone space", "VA");      
       if (!volumes.del(volumeId, transId)){
-        logger.log("error", "", "volsd", transId, "volume failed to be removed");      
+        logger.log("error", "", "volsd", transId, "volume failed to be removed", "VA");      
       }
-      logger.log("info", "", "volsd", transId, "aborting ...");      
+      logger.log("info", "", "volsd", transId, "aborting ...", "VA");      
       
       ack = "FAILED";
-      logger.log("error", "", "volsd", transId, "connection closed: " + e.description() );      
+      logger.log("error", "", "volsd", transId, "connection closed: " + e.description(), "VA" );      
       portsArray[portNo-9000-1].status=false;
+      diskAcquireOpPending = 0;
       return;
     }
     //********* AT THIS POINT, Volume is unmounted and detach but Not delete from list ***********//
     // if client successfuly mounted filestsrem, then update disk status and remove mount point
     if (ack.compare("OK") == 0){
-      logger.log("info", "", "volsd", transId, "ACK recived from client: [OK]" );      
+      logger.log("info", "", "volsd", transId, "ACK recived from client: [OK]", "VA" );      
 
       //label disk as used
       if (!volumes.update(volumeId, "status", "used", transId)) {
-        logger.log("info", "", "volsd", transId, "failed to update volumes status");
+        logger.log("info", "", "volsd", transId, "failed to update volumes status","VA");
       }
       
       logger.log("info", "", "volsd", transId, "disk:[" + volumeId +
-                 "] is mounted on client machine");      
+                 "] is mounted on client machine", "VA");      
       
     } else {
       // Ideally, we want to put disk back, but for now, just delete the disk and the EBSmanager 
       // will create another one.
-      logger.log("info", "", "volsd", transId, "ACK from clinent was [" + ack + "]");  
+      logger.log("info", "", "volsd", transId, "ACK from clinent was [" + ack + "]", "VA");  
 
       // remove volumes from m_volumes
       volumes.remove(volumeId, transId);
       
       // this is commented out since we are going to have the client to remove the volumes
-      // delete from volumes list (m_volumes)
       //logger.log("info", "", "volsd", transId, "delete volume from Amazone list");  
       //if (!volumes.del(volumeId, transId)){
       //}
       //logger.log("info", "", "volsd", transId, "aborting ...");      
     
       portsArray[portNo-9000-1].status=false;
+      diskAcquireOpPending = 0;
       return;
     }
 
@@ -481,27 +504,29 @@ int main ( int argc, char* argv[] ) {
         
     //check if vol exist
     logger.log("info", "", "volsd", t_transactionId, 
-               "get the volume:[" + t_volumeId + "] information");
+               "get the volume:[" + t_volumeId + "] information", "VR");
     if (!volumes.volume_exist(t_volumeId) || (t_volumeId == "") || (t_volumeId == " ") ){
-      logger.log("info", "", "volsd", t_transactionId, "volume was not found.");
+      logger.log("info", "", "volsd", t_transactionId, "volume was not found.", "VR");
+      diskReleaseOpPending = 0;
       return;
     }
     
-    // delete from volumes list (m_volumes)
+    // delete from aws 
     // ### this is the client program job now. We dont have to do it here.
     //logger.log("info", "", "volsd", transId, "delete volume from volumes list");  
     //volumes.del(volumeId, transId);
     
-    // delete from aws
-    logger.log("info", "", "volsd", t_transactionId, "remove volume from volumes list" );  
+    // delete from list
+    logger.log("info", "", "volsd", t_transactionId, "remove volume from volumes list", "VR" );  
     if ( !volumes.remove(t_volumeId, t_transactionId) ){
       logger.log("error", "", "volsd", t_transactionId, 
-                 "failed to remove volume:[" + t_volumeId + "] from volumes list");
-      return;
+                 "failed to remove volume:[" + t_volumeId + "] from volumes list", "VR");
+      diskReleaseOpPending = 0;
+    } else {
+      logger.log("info", "", "volsd", t_transactionId, "volume:[" + t_volumeId + 
+              "] was removed from volumes list", "VR");
     }
-    
-    logger.log("info", "", "volsd", t_transactionId, "volume:[" + t_volumeId + 
-              "] was removed from volumes list");
+
     diskReleaseOpPending = 0;
   }
    
@@ -521,14 +546,14 @@ int main ( int argc, char* argv[] ) {
   
     std::string snapshotId;
     if (!snapshot.latest(snapshotId)){
-      logger.log("info", "", "Manager", t_transactionId, "No snapshot was found.");
+      logger.log("info", "", "volsd", t_transactionId, "No snapshot was found.", "CV");
     }
   
      
     // all of this operation myst be done in Volumes
     if (!volumes.acquire( conf.TargetFilesystemMountPoint, snapshotId, conf.TempMountPoint, 
                           instance_id,  t_transactionId )) {
-      logger.log("info", "", "Manager", t_transactionId, "faield to acquire new volume.");
+      logger.log("info", "", "volsd", t_transactionId, "faield to acquire new volume.", "CV");
     }
     
     inProgressVolumes--;   
@@ -552,14 +577,14 @@ int main ( int argc, char* argv[] ) {
   
     int res = volumes.release( volumeId, t_transactionId );
     // delete from volumes list (m_volumes)
-    logger.log("debug", "", "Manager", t_transactionId, "delete volume from volumes list");  
+    logger.log("debug", "", "volsd", t_transactionId, "delete volume from volumes list", "RV");  
     volumes.del(volumeId, t_transactionId);
     
     // delete from aws
-    logger.log("info", "", "Manager", t_transactionId, "delete volume in aws enviroment");  
+    logger.log("info", "", "volsd", t_transactionId, "delete volume in aws enviroment", "RV");  
     if ( !volumes.remove(volumeId, t_transactionId) ){
-      logger.log("error", "", "Manager", t_transactionId, 
-                 "failed to delete volume:[" + volumeId + "] from amazon site");
+      logger.log("error", "", "volsd", t_transactionId, 
+                 "failed to delete volume:[" + volumeId + "] from amazon site", "RV");
     }
     
     diskRemoveOpPending = 0;
@@ -573,9 +598,9 @@ int main ( int argc, char* argv[] ) {
     
     Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
     
-    logger.log( "info", "", "volsd", 1, "create new snapshot" );  
+    logger.log( "info", "", "volsd", 1, "create new snapshot", "CSS" );  
     if (!snapshots.create_snapshot(conf.TargetFilesystem, conf.SnapshotFrequency)){
-      logger.log( "error", "", "volsd", 1, "could not create new snapshot" );  
+      logger.log( "error", "", "volsd", 1, "could not create new snapshot", "CSS" );  
     }
     
     snapshotsOpPending = 0;
@@ -591,7 +616,7 @@ int main ( int argc, char* argv[] ) {
     Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
     
     
-    logger.log( "info", "", "volsd", 4, "Syncing all volumes to " + conf.TargetFilesystem );  
+    logger.log( "info", "", "volsd", 4, "Syncing all volumes with " + conf.TargetFilesystem, "VS" );  
     // get a reference to the volumes list. We are using a referece rather than getting a copy for 
     // the list simply because the list get updated all the time, and sync is a lengthy operation. 
     // A problem will arrise when a volumes got removed from the list and the synchronizer goes and 
@@ -610,6 +635,82 @@ int main ( int argc, char* argv[] ) {
     syncingOpPending = 0;
   }
   
+  // -------------------------------------------------------------------
+  // Sync Request Handler Function
+  // -------------------------------------------------------------------
+  /* THIS IS GOING TO BE IMPLEMENTED NEXT VERSION
+  void SyncRequests_handler( Volumes &volumes ){
+    
+    std::string request, ack, cip;
+    std::string msg;
+    int transId;
+    
+    Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
+    logger.log("info", "", "volsd", 0, "Sync Requests started");
+      
+    try {
+      ServerSocket server( 8000 ); 
+
+      while (( true ) && ( !sigterm ))
+      {
+        
+        transId = utility::get_transaction_id();
+        logger.log("debug", "", "volsd", 0, "waiting for requests from clients ...", "SyncThread");
+        ServerSocket new_sock;
+        
+        // Accept the incoming connection
+        server.accept ( new_sock );
+
+        // client Ip address      
+        cip = server.client_ip();
+
+        
+        
+        try {
+          while ( true ) 
+          {
+            
+            // reads client request
+            new_sock >> request;
+            utility::clean_string(request);
+
+            if ( request.compare("SyncAll") == 0 ) {
+              
+              // the reply to the client will be a communication port. The new port is used as
+              // communication channel between the dispatcher and the client.
+              logger.log("info", "", "volsd", transId, "request:[" + request + "] from client:[" + 
+                         cip + "]", "SyncThread");
+              new_sock << "OK";
+
+              new_sock.close_socket();
+              // start a new thread which will listen on the port sent to the client. 
+              // this thread will handle the disk request
+              syncingOpPending = 1;
+              std::thread volumesSync_thread( volumesSync_handler, std::ref(snapshots), 
+                                        std::ref(volumes),   std::ref(sync));
+              volumesSync_thread.detach();  
+        
+
+            } else {
+              msg = "unknown request, shutting down connection\n";
+              logger.log("error", "", "volsd", transId, "unknown request:[" + request + 
+                         "], shutting down connection", "SyncThread");
+              new_sock << msg;
+              new_sock.close_socket();
+              break;
+            }
+          } // end while
+        } catch ( SocketException& e) {
+          logger.log("error", "", "volsd", transId, "Exception was caught: " + e.description(), "SyncThread");
+        }
+      } // end of outer while
+    } catch ( SocketException& e ) {
+      logger.log("error", "", "volsd", transId, "Exception was caught: " + e.description(), "SyncThread");
+    }
+    
+    return;
+  }
+  */
   
   // -------------------------------------------------------------------
   // Signal Handler Function 

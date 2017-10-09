@@ -45,7 +45,6 @@ int Snapshots::timeToSnapshot() {
   int diff = stol(date) - stol(current_timestamp);
   
   if (diff < 0) diff = diff * (-1);
-  std::cout << "Snapshot diff " << diff << "\n"; 
   if ( diff < ( m_snapshotFreq * 60 ) ){
     return 0; // dont renew
   } else {

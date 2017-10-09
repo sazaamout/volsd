@@ -98,41 +98,77 @@ int Volumes::create( std::string &t_volumeId, const std::string t_latestSnapshot
 // =================================================================================================
 int Volumes::attach( const std::string t_volumeId, const std::string t_device, 
                      const std::string t_instanceId, const int t_transcation ) {
-
-  int retry=0;
+  
   std::string output;
-  bool attached = false;
-
-  while (!attached) {
-    int res = utility::exec(
-              output, "/usr/bin/aws ec2 attach-volume --volume-id " + t_volumeId +
-              " --instance-id " + t_instanceId + " --device /dev/" + 
-              t_device + " --region us-east-1");
+  
+  // 1. attach
+  int res = utility::exec( output, 
+                           "/usr/bin/aws ec2 attach-volume --volume-id " + t_volumeId +
+                           " --instance-id " + t_instanceId + " --device /dev/" + 
+                           t_device + " --region us-east-1");
+  
+  if (!res) {
+    logger->log("debug", "", "volsd", t_transcation, "attaching volume[" + t_volumeId + 
+                "] failed", "attach");
+    logger->log("debug", "", "volsd", t_transcation, "AWS ERROR: " + output, "attach");
+    return 0;
+  }
+  
               
+  // problem: the command will return true when attaching the diskm but not yet fully attached. This
+  // function will return true even thought status is attacjing. This cause the mount to fail.
+  // use the command to get more accurate results
+  
+
+  
+  bool ready = false;
+  int  retry = 0;
+  // wait untill ready
+  while (!ready){
+    
+    res = utility::exec( output, 
+                       "/usr/bin/aws ec2 describe-volumes  --volume-ids " + t_volumeId + 
+                       " --query Volumes[*].Attachments[].State --output text --region us-east-1" );
+    
     utility::clean_string(output);
-    if (retry == 30) {
-      logger->log("error", "", "volsd", t_transcation, "failed to attach volume. ExitCode(" + 
-                  utility::to_string(res) + ").", "attach");
+    
+    if (!res){
+      logger->log("error", "", "volsd", t_transcation, "cannot describe volume", "attach");
+      logger->log("error", "", "volsd", t_transcation, "AWSERROR:[" + output + "]", "attach");
+      retry++;
+    }
+    
+    if (retry == 15){
+      logger->log("error", "", "volsd", t_transcation, "volume:[" + t_volumeId + 
+                  "] could not attach. ExitCode(" + utility::to_string(res) + ")", 
+                  "attach");
       return 0;
     }
-    if (!res) {
-      logger->log("debug", "", "volsd", t_transcation, "attching volume FAILED. ExitCode(" + 
-                  utility::to_string(res) + ") retry..." , "attach");
-      logger->log("error", "", "volsd", t_transcation, "AWSERROR:[" + output + 
-                  "]", "ebsvolume_attach");
-      retry++;
-    } else {
-      attached = true;
+
+    if (output.find("attaching") != std::string::npos){
+      logger->log("debug", "", "volsd", t_transcation, "volume:[" + t_volumeId + 
+                  "] is 'attaching'. retry ...", "attach");
+    } 
+    
+    if (output.find("attached") != std::string::npos){
+      logger->log("debug", "", "volsd", t_transcation, "volume[" + t_volumeId + 
+                  "] was attached successfuly", "attach");
+      ready = true;
       return 1;
     }
+    
     output = "";
+    retry++;
     sleep(2);
   }
-
-
-
-  return 1;
+  
+  
 }
+
+
+
+
+
 
 
 // =================================================================================================
@@ -193,7 +229,7 @@ int Volumes::detach( const std::string t_idleVolId, const int t_transactionId ){
             t_idleVolId + " --region us-east-1");
   if (!res)   {
     logger->log("debug", "", "volsd", t_transactionId, "detaching volume[" + t_idleVolId + 
-                "] failed. Exit(" + utility::to_string(res) + ")", "ebsvolume_detach");
+                "] failed. Exit(" + utility::to_string(res) + ")", "detach");
     return 0;
   }
 
@@ -210,7 +246,7 @@ int Volumes::detach( const std::string t_idleVolId, const int t_transactionId ){
     if (retry == 15){
       logger->log("error", "", "volsd", t_transactionId, "volume:[" + t_idleVolId + 
                   "] could not detached. ExitCode(" + utility::to_string(res) + ")", 
-                  "ebsvolume_detach");
+                  "detach");
       return 0;
     }
 
@@ -218,21 +254,20 @@ int Volumes::detach( const std::string t_idleVolId, const int t_transactionId ){
       logger->log("error", "", "volsd", t_transactionId, "cannot describe volume", 
                   "ebsvolume_detach");
       logger->log("error", "", "volsd", t_transactionId, "AWSERROR:[" + output + 
-                  "]", "ebsvolume_detach");
-      retry++;
+                  "]", "detach");
     }
     
     if (output.find("in-use") != std::string::npos){
       logger->log("debug", "", "volsd", t_transactionId, "volume:[" + t_idleVolId + 
-                  "] is 'in-use'. retry ...", "ebsvolume_detach");
-      retry++;
+                  "] is 'in-use'. retry ...", "detach");
     } if (output.find("available") != std::string::npos){
       logger->log("debug", "", "volsd", t_transactionId, "volume[" + t_idleVolId + 
-                  "] was detached Successfuly", "ebsvolume_detach");
+                  "] was detached Successfuly", "detach");
       ready = true;
       return 1;
     }
     output = "";
+    retry++;
     sleep(2);
   }
 
@@ -523,7 +558,8 @@ int Volumes::release_volume( std::string& v, std::string t_instanceId, std::stri
 
   // 1. given a mountPoint, get the device name
   logger->log("info", "", "volsd", t_transactionId, "get the device name for the mounted volume");
-  int res = utility::exec(output,  "df " + t_mountPoint + " | grep -oP ^/dev/[a-z0-9/]+");
+  int res = utility::exec(output,  "df " + t_mountPoint + " | grep " +  t_mountPoint + 
+                          " | grep -oP ^/dev/[a-z0-9/]+");
   if (!res) {
     logger->log("error", "", "volsd", t_transactionId, "mountPoint does not exist");
     return 0;
@@ -770,6 +806,7 @@ int Volumes::release (std::string &volumeId, int transactionId) {
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
   logger->log("info", "", "volsd", transactionId, 
               "remove mountpoint:[" + m_volumes[idleVolIndex].mountPoint +"]");
+  
   if (!utility::folder_remove(m_volumes[idleVolIndex].mountPoint)){
     logger->log("error", "", "volsd", transactionId, "could not remove mountpoint");
   } else {
@@ -941,17 +978,17 @@ int Volumes::acquire( const std::string t_targetFileSystem, const std::string t_
                 "FAILED to attaching new disk to localhost. Removing  from AWS space");
     
     if (!del(v.id, t_transaction)){
-    
       logger->log("error", "", "volsd", t_transaction, "FAILED to delete volume from AWS space");
+    } else {
+      logger->log("info", "", "volsd", t_transaction, "volume was removed from AWS space");
+      //logger("info", hostname, "EBSManager::thread", transaction, "removing device");
+      logger->log("debug", "", "volsd", t_transaction, "removing device");
     }
-    logger->log("info", "", "volsd", t_transaction, "volume was removed from AWS space");
-  
-    //logger("info", hostname, "EBSManager::thread", transaction, "removing device");
-    logger->log("debug", "", "volsd", t_transaction, "removing device");
     //remove_device
     utility::remove_element(m_devicesOnHold, v.device);
     return 0;
   }
+
   v.attachedTo = "localhost";
   logger->log("info", "", "volsd", t_transaction, "volume was attached successfully");
   sleep(5);

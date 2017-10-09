@@ -28,68 +28,68 @@ int Sync::synchronize ( const std::string t_source,
                         Logger *&logger
                       ) {
        
-    std::string source, destination;
-    source = t_source;
-    destination = t_destination;
+  std::string source, destination;
+  source = t_source;
+  destination = t_destination;
     
-    // check if path exist
-    if ( !utility::is_dir( destination.c_str() ) ) {
-      logger->log("error", "", "SyncClass", t_transId, "path:[" +  destination + "] does not exist", "synchronize");
-      return 0;
-    } 
+  // check if path exist
+  if ( !utility::is_dir( destination.c_str() ) ) {
+    logger->log("error", "", "SyncClass", t_transId, "path:[" +  destination + "] does not exist", "synchronize");
+    return 0;
+  } 
     
     
-    // check if t_source and t_destination ends with / 
-    if ( source[ source.length() - 1 ] != '/') {
-      source.append("/");
-    }
-    if ( destination[ destination.length() - 1 ] != '/') {
-      destination.append("/");
-    }
+  // check if t_source and t_destination ends with / 
+  if ( source[ source.length() - 1 ] != '/') {
+    source.append("/");
+  }
+  if ( destination[ destination.length() - 1 ] != '/') {
+    destination.append("/");
+  }
 
-    logger->log("info", "", "SyncClass", t_transId, "syncing:[" + destination + " with:[" + source + "]", "synchronize");
-    std::string rsyncCmd = "rsync -alpti --delete " + 
-                            source + " " + 
-                            destination + 
-                            " | awk '{ print $2 }'";
+  logger->log("info", "", "SyncClass", t_transId, "syncing:[" + destination + " with:[" + source + "]", "synchronize");
+  std::string rsyncCmd = "rsync -alpti --delete " + 
+                          source + " " + 
+                          destination + 
+                          " | awk '{ print $2 }'";
                             
-    logger->log("debug", "", "SyncClass", t_transId, rsyncCmd , "synchronize");
+  logger->log("debug", "", "SyncClass", t_transId, rsyncCmd , "synchronize");
     
-    std::string output;
-    std::stringstream output_ss, error_ss;
-    int res = utility::exec( output, rsyncCmd );
+  std::string output;
+  std::stringstream output_ss, error_ss;
+  int res = utility::exec( output, rsyncCmd );
     
-    if (!res){
-      utility::clean_string(output);
-      logger->log("error", "", "SyncClass", t_transId, "failed to sync to [" +  destination +"]", "sync_task");
-      logger->log("error", "", "SyncClass", t_transId, "CMDERROR:[" + output + "]", "sync_task");
-      error_ss << "["+ utility::to_string(t_transId) + "] syncing:[" << destination << "] failed\n";
-      error_ss << "CMDERROR:[" << output << "]\n\n";
-      
-    } else {
-      logger->log("info", "", "SyncClass", t_transId, "destination:[" + destination + "] was synced successfully", "sync_task");
-      output_ss << "syncing:[" << destination << "] was successful" << "\n";
-      output_ss << output.substr(0, output.length()-1) << "\n";
-    }
+  if (!res){
+    utility::clean_string(output);
+    logger->log("error", "", "SyncClass", t_transId, "failed to sync to [" +  destination +"]", "sync_task");
+    logger->log("error", "", "SyncClass", t_transId, "CMDERROR:[" + output + "]", "sync_task");
+    error_ss << "["+ utility::to_string(t_transId) + "] syncing:[" << destination << "] failed\n";
+    error_ss << "CMDERROR:[" << output << "]\n\n";
+    
+  } else {
+    logger->log("info", "", "SyncClass", t_transId, "destination:[" + destination + "] was synced successfully", "sync_task");
+    output_ss << "syncing:[" << destination << "] was successful" << "\n";
+    output_ss << output.substr(0, output.length()-1) << "\n";
+  }
     
     
-    /*
-    // optional: print rysn putput and errors
-    // print errors if they exist
-    if (output_ss.str() != "") {
-      if ( conf.EmailSynOutput == "yes" )
-        utility::send_email("MasterSync Output", output_ss.str(), conf.SynOutputEmailTo);
-      logger.log("debug", hostname, "EBSSyncer", transactionId, "results for syncing:\n" + output_ss.str(), "mastersync_task");
-      
-    }
-    if (error_ss.str() != "") {
-      if ( conf.EmailSynError == "yes" )
-        utility::send_email("MasterSync Errors", error_ss.str(), conf.SynErrorEmailTo);
-      logger.log("debug", hostname, "EBSSyncer", transactionId, "Errors for syncing:\n" + error_ss.str(), "mastersync_task");
-    }
+  /*
+  // optional: print rysn putput and errors
+  // print errors if they exist
+  if (output_ss.str() != "") {
+    if ( conf.EmailSynOutput == "yes" )
+      utility::send_email("MasterSync Output", output_ss.str(), conf.SynOutputEmailTo);
+    logger.log("debug", hostname, "EBSSyncer", transactionId, "results for syncing:\n" + output_ss.str(), "mastersync_task");
+    
+  }
+  if (error_ss.str() != "") {
+    if ( conf.EmailSynError == "yes" )
+      utility::send_email("MasterSync Errors", error_ss.str(), conf.SynErrorEmailTo);
+    logger.log("debug", hostname, "EBSSyncer", transactionId, "Errors for syncing:\n" + error_ss.str(), "mastersync_task");
+  }
 
-    syncing = false;
-    */
+  syncing = false;
+  */
 }
 
 
@@ -98,71 +98,68 @@ int Sync::synchronize ( const std::string t_source,
                         const int t_transId
                       ) {
        
-    std::string source, destination;
-    source = t_source;
-    destination = t_destination;
+  std::string source, destination;
+  source = t_source;
+  destination = t_destination;
+   
+  // check if path exist
+  if ( !utility::is_dir( destination.c_str() ) ) {
+    logger->log("error", "", "volsd", t_transId, "path:[" +  destination + "] does not exist");
+    return 0;
+  } 
     
-    // check if path exist
-    if ( !utility::is_dir( destination.c_str() ) ) {
-      logger->log("error", "", "SyncClass", t_transId, "path:[" +  destination + "] does not exist", "synchronize");
-      return 0;
-    } 
     
-    
-    // check if t_source and t_destination ends with / 
-    if ( source[ source.length() - 1 ] != '/') {
-      source.append("/");
-    }
-    if ( destination[ destination.length() - 1 ] != '/') {
-      destination.append("/");
-    }
+  // check if t_source and t_destination ends with / 
+  if ( source[ source.length() - 1 ] != '/') {
+    source.append("/");
+  }
+  if ( destination[ destination.length() - 1 ] != '/') {
+    destination.append("/");
+  }
 
-    logger->log("info", "", "SyncClass", t_transId, "syncing:[" + destination + "] with:[" + source + "]", "synchronize");
-    std::string rsyncCmd = "rsync -alpti --delete " + 
-                            source + " " + 
-                            destination + 
-                            " | awk '{ print $2 }'";
-                            
-    logger->log("debug", "", "SyncClass", t_transId, rsyncCmd , "synchronize");
+  std::string rsyncCmd = "rsync -alpti --delete " + 
+                          source + " " + 
+                          destination + 
+                          " | awk '{ print $2 }'";
+  
+  std::string output;
+  std::stringstream output_ss, error_ss;
+  int res = utility::exec( output, rsyncCmd );
     
-    std::string output;
-    std::stringstream output_ss, error_ss;
-    int res = utility::exec( output, rsyncCmd );
+  if (!res){
+    // an error occure
+    utility::clean_string(output);
+    logger->log("info", "", "volsd", t_transId, "RSYNC: [" + destination + "] with:[" + source + "] failed ");      
+    logger->log("info", "", "volsd", t_transId, "RSYNC ERROR: [" + output + "]"); 
     
-    if (!res){
-      utility::clean_string(output);
-      logger->log("error", "", "SyncClass", t_transId, "failed to sync to [" +  destination +"]", "sync_task");
-      logger->log("error", "", "SyncClass", t_transId, "CMDERROR:[" + output + "]", "sync_task");
-      error_ss << "["+ utility::to_string(t_transId) + "] syncing:[" << destination << "] failed\n";
-      error_ss << "CMDERROR:[" << output << "]\n\n";
-      
-    } else {
-      logger->log("info", "", "SyncClass", t_transId, "destination:[" + destination + "] was synced successfully", "sync_task");
-      output_ss << "syncing:[" << destination << "] was successful" << "\n";
-      output_ss << output.substr(0, output.length()-1) << "\n";
-    }
-    
-    std::cout << output_ss << std::endl;
-    // once finish syncing, set the time 
+  } else {
+    // successful, show sync output
+    logger->log("info", "", "volsd", t_transId, "RSYNC: [" + destination + "] with:[" + source + "] successful ");  
+    if ( output != "" )
+      logger->log("info", "", "volsd", t_transId, output); 
+  }
     
     
-    /*
-    // optional: print rysn putput and errors
-    // print errors if they exist
-    if (output_ss.str() != "") {
-      if ( conf.EmailSynOutput == "yes" )
-        utility::send_email("MasterSync Output", output_ss.str(), conf.SynOutputEmailTo);
-      logger.log("debug", hostname, "EBSSyncer", transactionId, "results for syncing:\n" + output_ss.str(), "mastersync_task");
-      
-    }
-    if (error_ss.str() != "") {
-      if ( conf.EmailSynError == "yes" )
-        utility::send_email("MasterSync Errors", error_ss.str(), conf.SynErrorEmailTo);
-      logger.log("debug", hostname, "EBSSyncer", transactionId, "Errors for syncing:\n" + error_ss.str(), "mastersync_task");
-    }
+  // once finish syncing, set the time 
+    
+    
+  /*
+  // optional: print rysn putput and errors
+  // print errors if they exist
+  if (output_ss.str() != "") {
+    if ( conf.EmailSynOutput == "yes" )
+      utility::send_email("MasterSync Output", output_ss.str(), conf.SynOutputEmailTo);
+    logger.log("debug", hostname, "EBSSyncer", transactionId, "results for syncing:\n" + output_ss.str(), "mastersync_task");
+    
+  }
+  if (error_ss.str() != "") {
+    if ( conf.EmailSynError == "yes" )
+      utility::send_email("MasterSync Errors", error_ss.str(), conf.SynErrorEmailTo);
+    logger.log("debug", hostname, "EBSSyncer", transactionId, "Errors for syncing:\n" + error_ss.str(), "mastersync_task");
+  }
 
-    syncing = false;
-    */
+  syncing = false;
+  */
 }
 
 
@@ -217,7 +214,6 @@ int Sync::synchronize ( const std::string t_source,
     int diff = stol(date) - stol(current_timestamp);
   
     if (diff < 0) diff = diff * (-1);
-    std::cout << "Sync diff " << diff << "\n"; 
     if ( diff < stol(m_syncIntervals)*60 ){
       return 0;
     } else {

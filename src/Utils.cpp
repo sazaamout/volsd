@@ -513,7 +513,8 @@ namespace utility
     const char* type = "ext4";
     const unsigned long mntflags = 0;
     const char* opts = "";   /* 65534 is the uid of nobody */
-
+    std::cout << src << std::endl;
+    std::cout << trgt << std::endl;
     int result = mount(src, trgt, type, mntflags, opts);
 
     if (result == 0) {
@@ -593,13 +594,13 @@ namespace utility
   
   
   bool folder_remove( const std::string dirname){
-    if ( !rmdir(dirname.c_str())) {
+    if ( rmdir(dirname.c_str()) == -1) {
       return false;
     }
     return true;
   }
 
-  
+    
   bool is_empty(std::string path){
     std::fstream myFile;
     myFile.open(path.c_str());

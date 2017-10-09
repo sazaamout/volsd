@@ -264,7 +264,7 @@ int main ( int argc, char* argv[] )
         return 0;
       }
       
-      logger.log("info", "", "volsd-client", 0, "connecting to port:[" + reply + "]");
+      logger.log("info", "", "volsd-client", 0, "sends volume release request to server");
       ClientSocket client_socket ( "10.2.1.147", 9000 );                       
                              
       std::string request = "DiskRelease:" + volume;
@@ -272,6 +272,7 @@ int main ( int argc, char* argv[] )
       try {
         client_socket << request;
         client_socket >> reply;
+        logger.log("info", "", "volsd-client", 0, "volumes release request sent");
       } 
       catch ( SocketException& ) {
         return 0;
