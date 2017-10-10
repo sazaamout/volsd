@@ -7,19 +7,19 @@
   *Volsd* allow users to push/delete a file/directory to all of the maintained volumes, whether these volumes are mounted locally or mounted on a remote server. 
 
 The system consist of the following components:
-..1. Volsd
-.....- Process "DiskAcquireRequest" from clients (EC2 Instances)
-.....- Process "DiskReleaseRequest" from clients
-.....- Process all of the administration request such as (list volumes, list volume status, etc.) 
-.....- maintains information about all of the created volumes such as status, mounting point, whether is mounted locally or at a remote server, and volume Id.
-.....- making snapshots periodically for the target file system.
-.....- Ensuring that we have the required number of disks at all time.
-.....- syncing all EBS volumes together whether they are mounted locally or mounted in a another ec2 instance. 
-.....- process the push and delete request from client 
-.....- process the sync request issued by Manager to sync a newly created volume.
-..2. Volsd-client.
-.....- This program must start when an instance bootup for the first time. It will send a DiskRequest to the *Volsd* to acquire a volume. The *Volsd* will detach a volume and send it that volume's id to the client. The client will mount the acquired volume As soon as it receives the volume Id.
-.....- When the instance is terminated, the client program will release the mounted volume and send a "DiskRelease" message to the *Volsd* which in turn will remove that volume from the disks list.
+1. Volsd
+   - Process "DiskAcquireRequest" from clients (EC2 Instances)
+   - Process "DiskReleaseRequest" from clients
+   - Process all of the administration request such as (list volumes, list volume status, etc.) 
+   - maintains information about all of the created volumes such as status, mounting point, whether is mounted locally or at a remote server, and volume Id.
+   - making snapshots periodically for the target file system.
+   - Ensuring that we have the required number of disks at all time.
+   - syncing all EBS volumes together whether they are mounted locally or mounted in a another ec2 instance. 
+   - process the push and delete request from client 
+   - process the sync request issued by Manager to sync a newly created volume.
+2. Volsd-client.
+   - This program must start when an instance bootup for the first time. It will send a DiskRequest to the *Volsd* to acquire a volume. The *Volsd* will detach a volume and send it that volume's id to the client. The client will mount the acquired volume As soon as it receives the volume Id.
+   - When the instance is terminated, the client program will release the mounted volume and send a "DiskRelease" message to the *Volsd* which in turn will remove that volume from the disks list.
 
 # Main features #
 ## Pre Installation ##
