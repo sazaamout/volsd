@@ -1,237 +1,279 @@
+// TODO:
+// 1. store data to s3
 
 #include "Snapshots.h"
 
-Snapshots::Snapshots(){
-	
-}
-
-Snapshots::Snapshots(int snapshot_max_no, std::string snapshot_file, int snapshot_freq){
-	snapshotMaxNumber = snapshot_max_no;
-	snapshotFile = snapshot_file;
-	snapshotFreq = snapshot_freq;
-	
-	//counter = 0;
+// =================================================================================================
+// Class Constructor 
+// =================================================================================================
+Snapshots::Snapshots( const int t_snapshotMaxNo, const std::string t_snapshotFile, 
+                      const int t_snapshotFreq, const std::string t_snapshotFileStorage ){
+  m_snapshotMaxNumber   = t_snapshotMaxNo;
+  m_snapshotFile        = t_snapshotFile;
+  m_snapshotFreq        = t_snapshotFreq;
+  m_snapshotFileStorage = t_snapshotFileStorage;
+  
+  load();
 }
 
 Snapshots::~Snapshots(){}
-		
-
-int Snapshots::snapshot_count(){
-	int no=0;
-	std::fstream myFile;
-	std::string line;
-	myFile.open(snapshotFile.c_str());
- 
-	if (!myFile.is_open())
-		return -1;
-		
-    // check if file is empty
-    if ( myFile.peek() == std::ifstream::traits_type::eof() )
-		return 0;
     
-	while (std::getline(myFile, line)){
-		no++;
-	}
-	myFile.close(); 
-	return no;
+
+// =================================================================================================
+// Function: Set Logger att
+// =================================================================================================
+void Snapshots::set_logger_att( bool toScreen, std::string logFile, int loglevel ) {
+  logger = new Logger(toScreen, logFile, loglevel);
 }
 
 
-int Snapshots::create_snapshot(std::string TargetFilesystem, int frequency, Logger& logger){
-	
-	
-	std::string output, snapshot_id;
-	
-	// get the current time 
-	std::string current_datetime = utility::datetime();
-	
-	// get the creation date of the latest snapshot
-	std::string snapshot_datetime = get_latest("date", logger);
-	
-	// finds the difference insecond
-	int diff = utility::datetime_diff( snapshot_datetime, current_datetime );
-	
-	if (diff < 0) diff = diff * (-1);
-	
-	if ( diff < ( frequency * 60 ) ){
-		logger.log("info", "infra1", "SnapshotClass", 0, "no need to create a snapshot ...", "create_snapshot");	
-		return 0;
-	}
-		
-	// create a new snapshot	
-	logger.log("debug", "infra1", "SnapshotClass", 0, "creating new snapshot ...", "create_snapshot");	
-	int res = utility::exec(output, "aws ec2 create-snapshot --volume-id " + TargetFilesystem + " --description \"This is my root volume snapshot\" --region us-east-1 --query SnapshotId --output text");
-	if (!res){
-		logger.log("error", "infra1", "SnapshotClass", 0, "Failed to create new snapshot", "create_snapshot");	
-		logger.log("error", "infra1", "SnapshotClass", 0, "AWSERROR:[" + output + "]", "create_snapshot");	
-		return 0;
-	}
-	snapshot_id = output; 
-	utility::clean_string(snapshot_id);
-	
-	output = "";
-	utility::exec(output, "aws ec2 describe-snapshots --snapshot-id " + snapshot_id + " --region us-east-1 --query Snapshots[].State --region us-east-1 --output text");
-	utility::clean_string(output);
-	
-	while (output.compare("pending") == 0) {
-		logger.log("debug", "infra1", "SnapshotClass", 0, "awaiting for [" + snapshot_id + "] to be ready ...", "create_snapshot");	
-		output = "";
-		utility::exec(output, "aws ec2 describe-snapshots --snapshot-id " + snapshot_id + " --region us-east-1 --query Snapshots[].State --region us-east-1 --output text");
-		utility::clean_string(output);
-		sleep(1);
-	}
-	
-	logger.log("info", "infra1", "SnapshotClass", 0, "Snapshot [" + snapshot_id + "] was created", "create_snapshot");	
-	
-	//updating snapshot file
-	update_snapshots(snapshot_id, current_datetime ,"idle", "true", logger);
-	//print_snapshots();
-	return 1;
+int Snapshots::size(){
+  return m_snapshots.size(); 
 }
 
 
-void Snapshots::print_snapshots(Logger& logger) {
-	
-	std::fstream myFile;
-	myFile.open(snapshotFile.c_str());
-	
-	if (!myFile.is_open()){
-		logger.log("error", "infra1", "SnapshotClass", 0, "could not open snapshot file", "get_latest");	
-		return;
-	}
-
-	std::cout << "\n PRINT_SNAPSHOT:: SNAPSHOTS LIST" << std::endl;
-	std::cout << " ==========================================================" << std::endl;
-	
-	std::string line;
-	while (std::getline(myFile, line)){
-		std::cout << line << "\n";
-	}
-	std::cout << " ==========================================================\n\n";
-
-	myFile.close();
-}
-
-
-int Snapshots::update_snapshots(std::string s_id, std::string datetime, std::string status, std::string latest, Logger& logger) {
-	
-	std::ofstream out;
-	
-	// 1) appned the new snapshot to file
-	logger.log("debug", "infra1", "SnapshotClass", 0, "append the new snapshot to file", "update_snapshots");	
-	out.open(snapshotFile.c_str(), std::ios_base::app);
-	if (!out.is_open()){
-		logger.log("error", "infra1", "SnapshotClass", 0, "could not open snapshot file", "get_latest");	
-		return 0;
-	}
-	//std::cout << "inserting: " << s_id << " " << datetime << " " << status << " " << latest << "\n";
-	out << s_id << " " << datetime << " " << status << " " << latest << "\n";
-	out.close();
-	
-	
-
-	// 2) count snapshots to determine if they exceed the needed number
-	std::fstream myFile;
-	myFile.open(snapshotFile.c_str());
-	
-	int counter = 0;
-	std::string line;
-	while (std::getline(myFile, line))
-		counter++;
-	myFile.close();
-	myFile.clear();
-	logger.log("debug", "infra1", "SnapshotClass", 0, "snapshots number:[" + utility::to_string(counter) + "]", "update_snapshots");		
-
-	// 3) Load data into structure and mainain number of snapshpt
-	logger.log("debug", "infra1", "SnapshotClass", 0, "loading snapshot data from file", "update_snapshots");	
-	int skip = 0;
-	Snapshot s[ counter - skip ];
-
-	if (counter > snapshotMaxNumber){ 
-		skip = counter - snapshotMaxNumber;
-		logger.log("debug", "infra1", "SnapshotClass", 0, "exceeding Maximum nmber of snapshot allowed:[" + utility::to_string(counter) + "/" + utility::to_string(snapshotMaxNumber) + "]", "update_snapshots");		
-	}
-	// reads file, line by line. Delete the skipped one and load the array with the other lines
-	myFile.open(snapshotFile.c_str());
-	std::string ss_id, ss_date, ss_time, ss_status, ss_latest, output;
-	
- 	int sk = 0, i = 0;	
- 	while ( std::getline( myFile, line ) ){
-		
-		if ( sk < skip ){
-			// remove the snapsho from this line
-			std::stringstream ss(line);
-			ss >> ss_id;
-			utility::exec(output, "aws ec2 delete-snapshot --snapshot-id " + ss_id + " --region us-east-1");
-			sk++;
-		} else {
-			// copy line into array
-			std::stringstream ss(line);
-			ss >> ss_id >> ss_date >> ss_time >> ss_status >> ss_latest;
-			s[i].id = ss_id;
-			s[i].date = ss_date; 
-			s[i].time = ss_time;
-			s[i].status = ss_status;
-			s[i].is_latest = "false";
-			i++;
-		}
-	}
-	
-	// mark the last snapshot as latest
-	s[i-1].is_latest = "true";
-	myFile.close();
-	myFile.clear();
-	
-	// 4) clear the file contents and dump back the array into the file
-	logger.log("debug", "infra1", "SnapshotClass", 0, "Updating snapshot file", "update_snapshots");	
-	myFile.open(snapshotFile.c_str(), std::fstream::out | std::fstream::trunc);
- 
-	for (int ii=0; ii<i; ii++) {
-		//std::cout << s[i].id << "|" << s[i].date << "|" << s[i].time << "|" << s[i].status << "|" << s[i].is_latest << "\n";
-		myFile << s[ii].id << " " << s[ii].date << " " << s[ii].time << " " << s[ii].status << " " << s[ii].is_latest << "\n";
-	}
-	myFile.close();	
-	
-	logger.log("debug", "infra1", "SnapshotClass", 0, "snapshot file was updated", "update_snapshots");	
+// =================================================================================================
+// Function: 
+// =================================================================================================
+int Snapshots::timeToSnapshot() {
+  // get the current time 
+  std::string current_timestamp = utility::unixTime();
   
-	
-	return 1;
+  // get the creation date of the latest snapshot
+  std::string date = latest_date();
+  
+  int diff = stol(date) - stol(current_timestamp);
+  
+  if (diff < 0) diff = diff * (-1);
+  if ( diff < ( m_snapshotFreq * 60 ) ){
+    return 0; // dont renew
+  } else {
+    return 1;
+  }
+  
+}
+
+// =================================================================================================
+// Function: 
+// =================================================================================================
+int Snapshots::create_snapshot( const std::string t_targetFilesystem, int t_frequency ){
+  
+  std::string output, snapshot_id;
+  Snapshot snapshot;
+  
+  // get the current time 
+  std::string current_timestamp = utility::unixTime();
+  
+
+  // create a new snapshot  
+  logger->log("debug", "", "volsd", 1, "creating new snapshot ...", "create_snapshot");  
+  
+  int res = utility::exec(output, "aws ec2 create-snapshot --volume-id " + t_targetFilesystem + " --description \"volumed: Snapshots for the targe filesystem\" --region us-east-1 --query SnapshotId --output text");
+  if (!res){
+    logger->log("error", "", "volsd", 1, "Failed to create new snapshot", "create_snapshot");  
+    logger->log("error", "", "volsd", 1, "AWSERROR:[" + output + "]", "create_snapshot");  
+    return 0;
+  }
+  snapshot_id = output; 
+  utility::clean_string(snapshot_id);
+  
+  output = "";
+  utility::exec(output, "aws ec2 describe-snapshots --snapshot-id " + snapshot_id + " --region us-east-1 --query Snapshots[].State --region us-east-1 --output text");
+  utility::clean_string(output);
+  
+  while (output.compare("pending") == 0) {
+    logger->log("debug", "", "volsd", 1, "awaiting for [" + snapshot_id + "] to be ready ...", "create_snapshot");  
+    output = "";
+    utility::exec(output, "aws ec2 describe-snapshots --snapshot-id " + snapshot_id + " --region us-east-1 --query Snapshots[].State --region us-east-1 --output text");
+    utility::clean_string(output);
+    sleep(5);
+  }
+  
+  logger->log("info", "", "volsd", 1, "Snapshot [" + snapshot_id + "] was created", "create_snapshot");  
+  
+  //updating snapshot file
+  Snapshot s;
+  s.id        = snapshot_id;
+  s.timestamp = current_timestamp;
+  s.status    = "idle";
+  s.is_latest ="true";
+  update_snapshots( s );
+  
+  return 1;
+}
+
+// =================================================================================================
+// Function: 
+// =================================================================================================
+void Snapshots::print( ) {
+
+  if (m_snapshots.empty())
+    std::cout << " There are no snapshots created yet";
+
+  for(std::vector<Snapshot>::iterator it = m_snapshots.begin(); it != m_snapshots.end(); ++it) {
+    std::cout << "Id:["   << it->id 
+              << "] TS:[" << it->timestamp 
+              << "] ST:[" << it->status 
+              << "] LA:[" << it->is_latest
+              << "]\n";  
+  
+  }
 }
 
 
-std::string Snapshots::get_latest(std::string select, Logger& logger){
-	
-	logger.log("debug", "infra1", "SnapshotClass", 0, "looking for latest snapshot", "get_latest");	
-	
-	std::fstream myFile;
-	myFile.open(snapshotFile.c_str());
+// =================================================================================================
+// Function: 
+// =================================================================================================
+int Snapshots::update_snapshots( const Snapshot t_snapshot ) {
+  
+  // 1) Appned the new snapshot to file
+  m_snapshots.push_back(t_snapshot);
+  
+  // 2) Snapshots must not exceed the m_snapshotMaxNumber;
+  if ( m_snapshots.size() > m_snapshotMaxNumber ) {
+    logger->log( "debug", "", "volsd", 1, "exceeding maximum number of snapshot allowed:[" + 
+                 utility::to_string(m_snapshots.size()) + "/" + 
+                 utility::to_string(m_snapshotMaxNumber) + 
+                 "]", 
+                 "update_snapshots"
+               );    
+    // if so, then remove the first snapshot in the list/vector.
+    std::string sId = m_snapshots[0].id;
+    m_snapshots.erase (m_snapshots.begin());
+    // delete from amazon space
+    std::string output;
+    utility::exec(output, "aws ec2 delete-snapshot --snapshot-id " + sId + " --region us-east-1");
+  }
+  
+  // 3) write these changes to file
+  write_to_file();
+  
+  // done
+  return 1;
+}
+
+
+// =================================================================================================
+// Function: 
+// =================================================================================================
+std::string Snapshots::latest_date(){
+  
+  if (m_snapshots.empty())
+    return "654369275";
  
-	if (!myFile.is_open()){
-		logger.log("error", "infra1", "SnapshotClass", 0, "could not open snapshot file", "get_latest");	
-		return 0;
-	}
-	
-	std::string line, snapshotId, date, time, status, latest;
-	
-	while (std::getline(myFile, line)){
-		
-		//std::cout << "line: " << line << "\n";
-		
-		if ( line.find("true") != std::string::npos ) {
-			std::stringstream ss(line);
-			ss >> snapshotId >> date >> time >> status >> latest;
-		
-			if (select == "id"){ 
-				logger.log("debug", "infra1", "SnapshotClass", 0, "latest snapshot id:[" + snapshotId + "]", "get_latest");
-				return snapshotId;
-			}else{
-				logger.log("debug", "infra1", "SnapshotClass", 0, "latest snapshot date:[" + date + "] time:[" + time + "]", "get_latest");
-				return date + " " + time;
-			}
-		}
-	}
-	
-	myFile.close();
-	return "";
-	
+  return m_snapshots[ m_snapshots.size()-1 ].timestamp;
 }
+
+
+// =================================================================================================
+// Function: 
+// =================================================================================================
+int Snapshots::latest( std::string &t_snapshotId ){
+  
+  logger->log("debug", "", "volsd", 1, "looking for latest snapshot", "get_latest");  
+  
+  if (m_snapshots.empty())
+    return 0;
+   
+  logger->log("debug", "", "volsd", 1, 
+              "latest snapshot id:[" + 
+              m_snapshots[ m_snapshots.size()-1 ].id + "]", 
+              "get_latest");
+              
+  t_snapshotId = m_snapshots[ m_snapshots.size()-1 ].id;
+  
+  return 1;
+}
+
+
+// =================================================================================================
+// Function: 
+// =================================================================================================
+int Snapshots::load(){
+  
+  // based on m_snapshotFileStorage. we will load data.
+  if (m_snapshotFileStorage == "local") {
+  } 
+  
+  if (m_snapshotFileStorage == "s3") {
+    //Aws::S3 s3( const std::string t_awsCmd, const std::string t_region )
+  } 
+  
+  // 1) open the file, and load all volume info in the array
+  std::ifstream myFile;
+  std::string line;
+  myFile.open(m_snapshotFile.c_str());
+
+  if ( utility::is_empty(m_snapshotFile) ){
+    return 0;
+  }
+      
+  // 2) load data
+  Snapshot s;
+  while (std::getline(myFile, line)) {
+      
+      std::size_t id_pos = line.find(' ', 0);
+      s.id = line.substr(0, id_pos);
+      
+      std::size_t ts_pos = line.find(' ', id_pos+1);
+      s.timestamp = line.substr(id_pos+1, ts_pos - id_pos-1);
+      
+      std::size_t status_pos = line.find(' ', ts_pos+1);
+      s.status = line.substr(ts_pos+1, status_pos-ts_pos-1);
+      
+      std::size_t latest_pos = line.find(' ', status_pos+1);
+      s.is_latest = line.substr(status_pos+1, latest_pos-status_pos-1);
+      
+      m_snapshots.push_back(s);
+  }
+  
+  myFile.close();
+  myFile.clear();
+  
+  // 3) Snapshots must not exceed the m_snapshotMaxNumber;
+  if ( m_snapshots.size() > m_snapshotMaxNumber ) {
+    // if so, then remove the first snapshot in the list/vector.
+    std::string sId = m_snapshots[0].id;
+    m_snapshots.erase (m_snapshots.begin());
+    // delete from amazon space
+    std::string output;
+    utility::exec(output, "aws ec2 delete-snapshot --snapshot-id " + sId + " --region us-east-1");
+  }
+  
+  
+  return 0;  
+}
+
+
+// =================================================================================================
+// Function: 
+// =================================================================================================
+int Snapshots::write_to_file(){
+  // write back to file
+  logger->log("debug", "", "volsd", 1, 
+              "writing changes to snapshots file", 
+              "write_to_file");
+  
+  std::ofstream myFileOut;
+  myFileOut.open(m_snapshotFile.c_str(), std::fstream::out | std::fstream::trunc);
+
+  if (!myFileOut.is_open()) {
+    logger->log("error", "", "volsd", 1, 
+                "could not open snapshots file", 
+                "write_to_file");
+    return false;
+  }
+
+  std::string line = "";
+  
+  for(std::vector<Snapshot>::iterator it = m_snapshots.begin(); it != m_snapshots.end(); ++it) {
+    myFileOut << it->id << " " << it->timestamp << " " << it->status
+              << " " << it->is_latest << "\n";
+  }
+  
+  myFileOut.close();
+  myFileOut.clear();
+  
+  return true;
+}
+

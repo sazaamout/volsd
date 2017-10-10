@@ -98,8 +98,9 @@ bool Socket::listen() const
 bool Socket::accept ( Socket& new_socket ) const
 {
   int addr_length = sizeof ( m_addr );
+  
   new_socket.m_sock = ::accept ( m_sock, ( sockaddr * ) &m_addr, ( socklen_t * ) &addr_length );
-
+  
   if ( new_socket.m_sock <= 0 )
     return false;
   else
@@ -196,5 +197,6 @@ sockaddr_in Socket::client_information() {
 }
 
 void Socket::close_socket() {
+
   ::close ( m_sock );
 }

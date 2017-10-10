@@ -1,0 +1,78 @@
+Volumes
+- adds an entry in the /etc/fstab for the mounted disk
+
+
+- Problem:
+  Syncing to a remote server requires login. We cannot use root since root login 
+  is bad. We need to create a special user for this purpose. 
+
+Idea #1 
+  For server: create setup script that runs one time to do the following:
+      1. Setup a new user with /bin/rssh
+      2. Put amazon key there
+      3. grant permissions to read from files/dir
+      NOTE: volsd program will run as root, it will only user volsd user for rsync.
+
+  For Client: create a user-data script that do the following:
+      1. In the user-data section, do the same as above
+      2. download volsd-client
+      3. run > volsd-client -a /home/cde.
+      NOTE: volsd-client can run as root, no problem
+      NOTE: The user can run an instaltion script on an EC2 server ( step #1 ), 
+            then save it as image. This way, the user-data will only perform 
+            step #2 and #3
+      NOTE: The user can do (step 1 and 2) on an EC2 server, then save
+            it as image. This way, the user-data will only run the client 
+            program step #3
+      
+utility
+- ensure that conf file is correct
+- redo the utility::is_root to use uuid
+
+volsd
+- ensure that the aws command is there
+- fixed the disatcher pars_args function (done for dispatcher. Still needed for sync and client)
+- Logger is defined in every handler. Make a global one for volsd
+
+
+
+
+
+
+General 
+- When installing the machine on a new machine, make sure that the installer creates the direcotryes for TempMountPoint VolumeFilePath SnapshotFile *LogFile. All of these varibles etc ist on the erc/config file. (done, need test)
+- Create a sync class so it can be used by dispatcher and synchroziner and Volumes class
+- start a cleaner thread that check if volumes are correct
+- move the diskinfo, snapshots files to aws
+- ** Think about implement the concept of pulling rather than pushing for syncing. This means thaat the client will be a program running continusly on client macbihne, The server will send a signal for client to update data, the client will pull new data.
+- when a volume failed to attach becouse of an os problem, restarting the server fixes it. Try to catch this case in your program/
+
+
+Logger
+- remove '2017' from logger
+- Modify Logger class to accept localhost_name, program_name in the constructor to avoid typing these everytime
+
+
+client:
+- make a conf file and put on it the ip of the server everything else
+
+
+DONE:
+- Reimplement the mount function to use <sys/mount.h> library (done)
+- ensure idele volumes are mounted at the begining of the program (done)
+- ensure target filesystem is mounted at the begining of the program (done)
+- Rename the Disks Class to Volume and investigate whether you need it to be a class or namespace (Done. Made it as class)
+- Merge the Dispatcher with the manager (done)
+- have snapshots class to use unix time rather than actual time. Also, store data in unix time (done)
+- mount/ensure the target file system (done)
+- Add 'release' and 'quire' functions and remove it from dispatcher and dont forget to use locks when using write_to_file function (done)
+- Move the syncing funtionality to Volumes Class (think about it)
+- currenlty, Volumes class reads from diskinfo file direcoty, make it read from an array
+- Removing the syncing from inside the sync.cpp file and put it in a separate file (done)
+
+
+Next version:
+ - volsd-client will pull all of the informatom rather than volsd pushes to them based on a signal that was
+sent by volsd. This triggered from a push script to volsd. Also, the volsd-client will be continuosly working on 
+the client servers and are pulling data periodically.
+

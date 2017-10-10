@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 2.8.9)
 
-project(volumeDispatcher)
+project(volsd)
 
 # set some global variables
 set(EXE_INSTALL_DIR ${CMAKE_BINARY_DIR}/install/bin)
-set(CFG_INSTALL_DIR ${CMAKE_BINARY_DIR}/install/etc/volumeDispatcher)
+set(CFG_INSTALL_DIR ${CMAKE_BINARY_DIR}/install/etc/volsd)
 
 # set the version
 set(DISPATCHER_MAJOR_VERSION 1)
@@ -12,12 +12,6 @@ set(DISPATCHER_MINOR_VERSION 0)
 set(DISPATCHER_PATCH_VERSION 0)
 set(DISPATCHER_VERSION
   ${DISPATCHER_MAJOR_VERSION}.${DISPATCHER_MINOR_VERSION}.${DISPATCHER_PATCH_VERSION})
-
-set(MANAGER_MAJOR_VERSION 1)
-set(MANAGER_MINOR_VERSION 0)
-set(MANAGER_PATCH_VERSION 0)
-set(MANAGER_VERSION
-  ${MANAGER_MAJOR_VERSION}.${MANAGER_MINOR_VERSION}.${MANAGER_PATCH_VERSION})
 
 set(SYNC_MAJOR_VERSION 1)
 set(SYNC_MINOR_VERSION 0)
@@ -46,28 +40,27 @@ configure_file (
   "${CMAKE_SOURCE_DIR}/include/Config.h"
   )
 
-set(CMAKE_CXX_FLAGS "-Wall -std=c++0x -pthread")
+#set(CMAKE_CXX_FLAGS "-Wall -std=c++0x -pthread")
+set(CMAKE_CXX_FLAGS "-std=c++0x -pthread")
  
-set(DISPATCHER src/dispatcher.cpp src/Utils.cpp src/Logger.cpp src/Disks.cpp src/ServerSocket.cpp src/Socket.cpp)
-set(MANAGER    src/manager.cpp    src/Utils.cpp src/Logger.cpp src/Disks.cpp src/Snapshots.cpp)
-set(SYNC       src/sync.cpp       src/Utils.cpp src/Logger.cpp src/Disks.cpp src/ServerSocket.cpp src/Socket.cpp)
-set(CLIENT     src/client.cpp     src/Utils.cpp src/Logger.cpp src/Disks.cpp src/ClientSocket.cpp src/Socket.cpp)
+set(VOLUMESD    src/volumesd.cpp         src/Utils.cpp src/Logger.cpp src/Volumes.cpp src/ServerSocket.cpp src/Socket.cpp src/Sync.cpp src/Snapshots.cpp src/ClientSocket.cpp)
+set(SYNC        src/sync.cpp             src/Utils.cpp src/Logger.cpp src/Volumes.cpp src/ServerSocket.cpp src/Socket.cpp src/Sync.cpp)
+set(VCLIENT     src/volumesd-client.cpp  src/Utils.cpp src/Logger.cpp src/Volumes.cpp src/ClientSocket.cpp src/Socket.cpp  src/Sync.cpp) 
 
 # create the executables
-add_executable(dispatcher ${DISPATCHER})
-add_executable(manager    ${MANAGER})
-add_executable(sync       ${SYNC})
-add_executable(client     ${CLIENT})
+add_executable(volumesd            ${VOLUMESD})
+add_executable(sync                ${SYNC})
+add_executable(volumesd-client     ${VCLIENT})
 
 # installations
 #set(EXE_INSTALLATION_DIR ${CMAKE_BINARY_DIR}/install)
-install(TARGETS dispatcher      DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
-install(TARGETS manager         DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
-install(TARGETS sync            DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
-install(TARGETS client          DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
-install(FILES   conf/config     DESTINATION ${CFG_INSTALL_DIR} COMPONENT config  )
+install(TARGETS volumesd             DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
+install(TARGETS sync                 DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
+install(TARGETS volumesd-client      DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
+install(FILES   conf/dispatcher.cfg  DESTINATION ${CFG_INSTALL_DIR} COMPONENT config  )
+install(FILES   conf/sync.cfg        DESTINATION ${CFG_INSTALL_DIR} COMPONENT config  )
 
 message("--------------------------------------------------")
-message("Binaries will be placed in ${EXE_INSTALL_DIR}")
-message("Configurations files will be placed in ${CFG_INSTALL_DIR}")
+message("Binaries are installed in in : ${EXE_INSTALL_DIR}")
+message("Conf files will be placed in : ${CFG_INSTALL_DIR}")
 message("--------------------------------------------------")

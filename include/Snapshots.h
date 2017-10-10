@@ -14,35 +14,48 @@
 
 class Snapshots {
 	private:
-		int snapshotMaxNumber;
+		int m_snapshotMaxNumber;
+    int m_snapshotFreq;
+		std::string m_snapshotFile;
+    std::string m_snapshotFileStorage;
 		int counter;
-		int snapshotFreq;
-		std::string snapshotFile;
 		
+    
 		struct Snapshot{
 			std::string id;
-			std::string date;
-			std::string time;
+			std::string timestamp;
 			std::string status;
 			std::string is_latest;
 		};
-		
-		int update_snapshots(std::string s_id, std::string datetime, std::string status, std::string latest, Logger& logger);
+    
+    std::vector<Snapshot> m_snapshots;
+		Logger *logger;
+    
+		int update_snapshots( const Snapshot t_snapshot );
 		std::string next_token(std::string& str, std::string delimiter);
-		int snapshot_count();
 		
+		int write_to_file();
+    
 	public:
-		Snapshots();
-		Snapshots(int snapshot_max_no, std::string snapshot_file, int snapshot_freq);
+		Snapshots(){};
+		Snapshots( const int t_snapshotMaxNo, const std::string t_snapshotFile, 
+               const int t_snapshotFreq,  const std::string t_snapshotFileStorage );
 		~Snapshots();
-		
+		void set_logger_att( bool toScreen, std::string logFile, int loglevel );
+    
 		int load_snapshots(Logger& logger);
 		int delete_snapshot();
 		
-		int create_snapshot(std::string TargetFilesystem, int freq, Logger& logger);
-		void print_snapshots(Logger& logger);
+		int create_snapshot( const std::string t_targetFilesystem, int t_frequency );
 		
-		std::string get_latest(std::string select, Logger& logger);
+		
+		//std::string get_latest(std::string select, Logger& logger);
+    int latest( std::string &t_snapshotId );
+    std::string latest_date( );
+    int timeToSnapshot();
+    int load();
+    int size();
+    void print();
 };
 
 #endif

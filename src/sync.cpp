@@ -2,37 +2,44 @@
 #include <fstream>
 #include <string>
 #include <thread>
-#include <mutex>
-
 #include "ServerSocket.h"
 #include "SocketException.h"
 
-#include "Disks.h"
+#include "Volumes.h"
 #include "Utils.h"
 #include "Logger.h"
+#include "Config.h"
+#include "Sync.h"
+
+//remove this
+#include <mutex>
 
 using namespace utility;
 using namespace std;
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- GLOBALS VARAIBLES AND STRUCTURES
- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */ 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// GLOBALS VARAIBLES AND STRUCTURES
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  utility::Configuration conf;
+  
+  //remove this
   std::mutex m;
 
   std::string instance_id;
   std::string hostname; 
-  utility::Configuration conf;
+  
   bool _onscreen = false;
+  
   std::string _conffile;
   int _loglevel;
 
   bool mastersync, syncing, pushing, deleting;
 
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- FUNCTION PROTOTYPES
- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-  void mastersync_task(int transactionId);
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// FUNCTION PROTOTYPES
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  void volumesSync_handler(int transactionId);
   void push_task(int transactionId, std::string request);
   void delete_task(int transactionId, std::string request);
   void sync_task(int transactionId, std::string request);
@@ -40,41 +47,56 @@ using namespace std;
   std::string get_latest(int transactionId, Logger& logger);
   bool masterSyncForce = false;
   
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- MAIN PROGRAM
- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+  void get_arguments( int argc, char **argv );
+  
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// MAIN PROGRAM
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 int main(int argc, char* argv[])
 {
   
-  
-  if (!parse_arguments(argc, argv)){
-    std:: cout << "must specify conf file location\n";
-    return 1;
-  }
-  
+  // user must be root
   if (!utility::is_root()){
-    std:: cout << "program must be ran as root\n";
+    std::cout << "error: program must be ran as root\n";
     return 1;
   }
-  
-  
-  // load the configurations 
-  if (!utility::load_configuration(conf, _conffile)){
-    std::cout << "failed to load configurations\n";
-    return 1;
-  }
-  
-  _loglevel = conf.ControllerLoglevel;
-  Logger logger(_onscreen, conf.SyncerLogFile, _loglevel);
 
+  _conffile = SYNC_CONF_FILE;
+  get_arguments( argc, argv );
+   
+  // -------------------------------------------------------------------
+  // Initializations	
+  // -------------------------------------------------------------------  
+  // 1. Load the configurations from conf file
+  if ( !utility::load_configuration(conf, _conffile) ){
+    // TODO: ensure that conf file is correct
+    std::cout << "error: cannot locate configuration file\n";
+    return 1;
+  }
+      
+  // 2. Ensure files and directories are created
+  utility::folders_create( conf.SyncLogPrefix );
+    
+  if (!utility::file_create(conf.SyncDatesFile)){
+    std::cout << "error: failed to create snapshot file\n";
+    return 1;
+  }
+    
+  // 3. Object Instantiation  
+  _loglevel = conf.SyncLogLevel;
+  Logger logger(_onscreen, conf.SyncLogPrefix + "sync.log", _loglevel);
+  
   // get this instance id
-  //instance_id = utility::get_instance_id();  
   hostname    = utility::get_hostname();
   
-  // start the mastersyncer thread
-  std::thread mastersync_thread(mastersync_task, 0);
-  mastersync_thread.detach();
   
+  
+  // MasterSync Thread: this thread will sync all of the maintained volumes periodically. 
+  if (conf.SyncVolumes == "yes"){
+    std::thread mastersync_thread(volumesSync_handler, 0);
+    mastersync_thread.detach();
+  }
+  return 0;
   
   
   std::string request, cip, msg;
@@ -83,7 +105,7 @@ int main(int argc, char* argv[])
   
   try {
     // Create the server socket to listen on the SyncerPort
-    ServerSocket syncerSocket ( conf.SyncerServicePort );
+    ServerSocket syncerSocket ( conf.SyncServicePort );
     
     while ( true ) 
     {
@@ -134,7 +156,7 @@ int main(int argc, char* argv[])
             masterSyncForce = true;
             clientSocket << "recived\n";
             
-            std::thread mastersync_thread(mastersync_task, transId);
+            std::thread mastersync_thread(volumesSync_handler, transId);
             mastersync_thread.detach();
             
                       
@@ -175,29 +197,26 @@ int main(int argc, char* argv[])
 
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- FUNCTION 
- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// FUNCTION 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   
-  /* ---------------------------------------------------------------------------
-     MASTERSYNC_TASK FUNCTION
-     Description: This function is called priodically to sync all local and remote 
-              disks to the taerget filesystem.
-    -------------------------------------------------------------------------- */
-  void mastersync_task(int transactionId){
-    
+  // -----------------------------------------------------------------------------------------------
+  // MasterSync handler
+  // -----------------------------------------------------------------------------------------------
+  void volumesSync_handler(int transactionId){
     
     mastersync = true;
     
-    int sleep_time = conf.SyncFrequency*60;
+    int sleep_time = conf.SyncVolumesInterval*60;
     
     // check when is the last time a sync was done.
     // if a sync was done 
     
-    Logger logger(_onscreen, conf.SyncerLogFile, _loglevel);
+    Logger logger(_onscreen, conf.SyncLogPrefix + "sync.log", _loglevel);
     
     int diff;
-    
+    /*
     while (true) {
       std::string latest_datetime = get_latest(transactionId, logger);
       std::string current_datetime = utility::datetime();
@@ -218,11 +237,11 @@ int main(int argc, char* argv[])
             );
 
       
-      if ( (diff < (conf.SyncFrequency) * 60) && (!masterSyncForce) ){
+      if ( (diff < (conf.SyncVolumesInterval) * 60) && (!masterSyncForce) ){
         logger.log("info", hostname, "EBSSyncer", transactionId, "no need to sync, latest was done ", "mastersync_task");
-        logger.log("debug", hostname, "EBSSyncer", transactionId, "SLEEP-FOR:[" + utility::to_string((conf.SyncFrequency*60) - diff) + "]", "mastersync_task");
+        logger.log("debug", hostname, "EBSSyncer", transactionId, "SLEEP-FOR:[" + utility::to_string((conf.SyncVolumesInterval*60) - diff) + "]", "mastersync_task");
         mastersync = false;
-        sleep_time = (conf.SyncFrequency*60) - diff;
+        sleep_time = (conf.SyncVolumesInterval*60) - diff;
         sleep(sleep_time);
         
       } else {
@@ -256,7 +275,7 @@ int main(int argc, char* argv[])
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
         // 1) sync path to local filesystem
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        std::stringstream l_ss( Disks::ebsvolume_list("local", conf.VolumeFilePath) );
+        std::stringstream l_ss( Volumes::ebsvolume_list("local", conf.VolumeFilePath) );
 
           
         for (int ii = 0; l_ss >> mp; ii++)
@@ -288,7 +307,7 @@ int main(int argc, char* argv[])
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
         // 2) sync path to remote filesystem
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        std::stringstream r_ss( Disks::ebsvolume_list("remote", conf.VolumeFilePath) );
+        std::stringstream r_ss( Volumes::ebsvolume_list("remote", conf.VolumeFilePath) );
         for (int ii = 0; r_ss >> att; ii++)
         {
           if (att != "none") {
@@ -325,11 +344,11 @@ int main(int argc, char* argv[])
           
         }
         if (error_ss.str() != "") {
-          if ( conf.EmailSynError == "yes" )
+          if ( conf.EmailSyncError == "yes" )
             utility::send_email("MasterSync Errors", error_ss.str(), conf.SynErrorEmailTo);
           logger.log("debug", hostname, "EBSSyncer", transactionId, "Errors for syncing:\n" + error_ss.str(), "mastersync_task");
         }
-        sleep_time = conf.SyncFrequency*60;
+        sleep_time = conf.SyncVolumesInterval*60;
         sleep(sleep_time);
       }  
     }
@@ -337,9 +356,10 @@ int main(int argc, char* argv[])
     
     
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
-    // 3) sleep for SyncFrequency
+    // 3) sleep for SyncVolumesInterval
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     mastersync = false;
+    * */
   }
    
   /* ---------------------------------------------------------------------------
@@ -347,10 +367,10 @@ int main(int argc, char* argv[])
    * push a path to all local and remote disks
    -------------------------------------------------------------------------- */
   void push_task(int transactionId, std::string request){
-
+/*
     pushing  = true;
       
-    Logger logger(_onscreen, conf.SyncerLogFile, _loglevel);
+    Logger logger(_onscreen, conf.SyncLogPrefix + "sync.log", _loglevel);
     
     // check if a path was supplied
     if ( request.find("/") == std::string::npos ){
@@ -392,7 +412,7 @@ int main(int argc, char* argv[])
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
     // 2) sync path to local filesystem
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    std::stringstream l_ss( Disks::ebsvolume_list("local", conf.VolumeFilePath) );
+    std::stringstream l_ss( Volumes::ebsvolume_list("local", conf.VolumeFilePath) );
 
     for (int ii = 0; l_ss >> mp; ii++){
       logger.log("debug", hostname, "EBSSyncer", transactionId, "CMD:[/home/cde/saad/code/DiskManager/bin/local-push.sh " + path + " " + mp + " " + source + "]", "push_task");
@@ -418,7 +438,7 @@ int main(int argc, char* argv[])
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
     // 3) sync path to remote filesystem
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    std::stringstream g_ss( Disks::ebsvolume_list("remote", conf.VolumeFilePath) );
+    std::stringstream g_ss( Volumes::ebsvolume_list("remote", conf.VolumeFilePath) );
     
     for (int ii = 0; g_ss >> att; ii++){
       logger.log("debug", hostname, "EBSSyncer", transactionId, "CMD:[/home/cde/saad/code/DiskManager/bin/remote-push.sh " + path + " " + att + "]", "push_task");
@@ -461,6 +481,7 @@ int main(int argc, char* argv[])
     
         
     pushing  = false;
+    * */
   }
 
 
@@ -468,9 +489,10 @@ int main(int argc, char* argv[])
    DELETE_TASK
    -------------------------------------------------------------------------- */
   void delete_task(int transactionId, std::string request){
+   /*
     deleting = true;
     
-    Logger logger(_onscreen, conf.SyncerLogFile, _loglevel);
+    Logger logger(_onscreen, conf.SyncLogPrefix + "sync.log", _loglevel);
     
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
     // 1) Checks and data gather
@@ -583,7 +605,7 @@ int main(int argc, char* argv[])
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
     // 3) sync path to local filesystem
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    std::stringstream l_ss( Disks::ebsvolume_list("local", conf.VolumeFilePath) );
+    std::stringstream l_ss( Volumes::ebsvolume_list("local", conf.VolumeFilePath) );
     if (is_file(fullPath.c_str())) {
       for (int ii = 0; l_ss >> mp; ii++)
       {
@@ -659,7 +681,7 @@ int main(int argc, char* argv[])
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
     // 3) sync path to remote filesystem
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
-    std::stringstream r_ss( Disks::ebsvolume_list("remote", conf.VolumeFilePath) );
+    std::stringstream r_ss( Volumes::ebsvolume_list("remote", conf.VolumeFilePath) );
     if (is_file(fullPath.c_str())) {
       for (int ii = 0; r_ss >> att; ii++)
       {
@@ -728,8 +750,8 @@ int main(int argc, char* argv[])
     // 5) if there was an error, email it.
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if (error_ss.str() != ""){
-      if ( conf.EmailSynError == "yes" )
-        utility::send_email("Delete errors", error_ss.str(), conf.SynErrorEmailTo);
+      if ( conf.EmailSyncError == "yes" )
+        utility::send_email("Delete errors", error_ss.str(), conf.SyncErrorEmailTo);
       logger.log("debug", hostname, "EBSSyncer", transactionId, "results for syncing:\n" + error_ss.str(), "delete_task");
     }
     
@@ -737,11 +759,12 @@ int main(int argc, char* argv[])
     // 6) if debug level is enabled, shows output in log file
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if (output_ss.str() != ""){
-      if ( conf.EmailSynOutput == "yes" )
-        utility::send_email("Delete output", output_ss.str(), conf.SynOutputEmailTo);
+      if ( conf.EmailSyncOutput == "yes" )
+        utility::send_email("Delete output", output_ss.str(), conf.SyncOutputEmailTo );
       logger.log("debug", hostname, "EBSSyncer", transactionId, "results for syncing:\n" + output_ss.str(), "delete_task");
     }
     deleting = false;
+    * */
   }
 
 
@@ -750,10 +773,10 @@ int main(int argc, char* argv[])
    * Given a volume, sync it with targetVolume or 
    -------------------------------------------------------------------------- */
   void sync_task(int transactionId, std::string request){
-    
+    /*
     syncing = true;
     
-    Logger logger(_onscreen, conf.SyncerLogFile, _loglevel);
+    Logger logger(_onscreen, conf.SyncLogPrefix + "sync.log", _loglevel);
     
     // extract the full patha and the subpath
     if ( request.find("/") == std::string::npos ){
@@ -815,38 +838,74 @@ int main(int argc, char* argv[])
     // optional: print rysn putput and errors
     // print errors if they exist
     if (output_ss.str() != "") {
-      if ( conf.EmailSynOutput == "yes" )
-        utility::send_email("MasterSync Output", output_ss.str(), conf.SynOutputEmailTo);
+      if ( conf.EmailSyncOutput == "yes" )
+        utility::send_email("MasterSync Output", output_ss.str(), conf.SyncOutputEmailTo);
       logger.log("debug", hostname, "EBSSyncer", transactionId, "results for syncing:\n" + output_ss.str(), "mastersync_task");
       
     }
     if (error_ss.str() != "") {
-      if ( conf.EmailSynError == "yes" )
-        utility::send_email("MasterSync Errors", error_ss.str(), conf.SynErrorEmailTo);
+      if ( conf.EmailSyncError == "yes" )
+        utility::send_email("MasterSync Errors", error_ss.str(), conf.SyncErrorEmailTo);
       logger.log("debug", hostname, "EBSSyncer", transactionId, "Errors for syncing:\n" + error_ss.str(), "mastersync_task");
     }
 
     syncing = false;
+    * */
   }
 
-  /* ---------------------------------------------------------------------------
-   PARE_ARGUMENT
-   -------------------------------------------------------------------------- */
-  int parse_arguments(int argc, char* argv[]){
-    std::string str;
-    for (int i=0; i<argc; i++){
-      str = argv[i];
-      if (str == "--screen")
-        _onscreen = true;
-        
-      if ( str.find("--conf") != std::string::npos )
-        _conffile = str.substr(str.find("=")+1, str.find("\n"));
+  // -------------------------------------------------------------------
+  // Get_Arguments 
+  // -------------------------------------------------------------------
+  void get_arguments( int argc, char **argv ) {
+
+    int index;
+    int c;
+    opterr = 0;
+
+    while ((c = getopt (argc, argv, "hvsc:")) != -1) 
+      switch (c) {   
+        case 'h':
+          printf("%s: [options]\n", argv[0]);
+          printf(" options:\n");
+          printf("   -v   version number\n");
+          printf("   -c   config file path\n");
+          printf("   -s   dump stdout and stderr to the screen\n");
+          printf("   -h   print this help menu\n");
+          exit (0);
+        case 'v':
+          printf("Dispatcher version: %i.%i.%i\n", 
+                  DISPATCHER_MAJOR_VERSION, DISPATCHER_MINOR_VERSION, DISPATCHER_PATCH_VERSION
+          );
+          exit (0);
+        case 's':
+          _onscreen = true;
+           break;
+        case 'c':
+          _conffile = optarg;
+          break;
+        case '?':
+          if (optopt == 'c'){
+            fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+            fprintf (stderr, "use -h for help.\n");
+          }else if (isprint (optopt)){
+            fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+            fprintf (stderr, "use -h for help.\n");
+          }else{
+            fprintf (stderr, "Unknown option character `\\x%x'.\n", optopt);
+            fprintf (stderr, "use -h for help.\n");
+          }
+          exit(1);
+        default:
+          exit(0); 
+      }
+
+    for (index = optind; index < argc; index++){
+      printf ("Non-option argument %s\n", argv[index]);
+      fprintf (stderr, "use -h for help.\n");
+      exit(1);
     }
-    if (_conffile == "")
-      return false;
-      
-    return true;
   }
+  
 
 
   /* ---------------------------------------------------------------------------

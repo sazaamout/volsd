@@ -13,6 +13,8 @@
 #include <ctime>  // used: logger, randomString
 #include <cstring> // used: logger
 
+#include "Utils.h"
+
 class Logger
 {
 	private:
