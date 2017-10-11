@@ -300,19 +300,18 @@ namespace utility
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // PRINT_ELEMENTS FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // this is not used, keep it for future use
   void print_elements(std::vector<std::string>& v){
-    std::cout << " =================================================\n ";
     for(std::vector<std::string>::iterator it = v.begin(); it != v.end(); ++it) {
       std::cout << *it << " ";
     }
-    std::cout << " =================================================\n";
   }
 
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // DATETIME FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
-  // not used
+  // this is not used, keep it for future use
   std::string datetime (){
     time_t now_t = time(0);
     struct tm *now_tm = localtime( &now_t );
@@ -334,7 +333,7 @@ namespace utility
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // DATETIME_DIFF FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // not used
+  // this is not used, keep it for future use
   int datetime_diff ( std::string time1, std::string time2 ) {
 	  
     struct tm tm1, tm2; 
@@ -401,6 +400,7 @@ namespace utility
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // SEND_MAIL FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // this is not used
   int send_email(std::string title, std::string message, std::string to){
     std::string output;
     int res = utility::exec(output, "echo \"" + message + "\" | tr -cd '\11\12\15\40-\176' | mail -s \"" + title + "\" " + to);
@@ -625,7 +625,7 @@ namespace utility
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // RSYNC ERROR FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // not sure if this still used?
+  // this is not used, but keep it for future 
   std::string rsync_errorCodetoString(int errorCode) 
   {
     switch(errorCode){
