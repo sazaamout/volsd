@@ -1044,13 +1044,14 @@ int Volumes::acquire( const std::string t_targetFileSystem, const std::string t_
   //                        utility::to_string( conf.SyncerServicePort ) 
   //                       );
   
-  Sync::synchronize( t_targetFileSystem, v.mountPoint, t_transaction, logger );
   
-  int res;
+  
+  int res = Sync::synchronize( t_targetFileSystem, v.mountPoint, t_transaction, logger );;
   if (!res){
     logger->log("error", "", "volsd", t_transaction, "syntax error in command");
+  } else {
+    logger->log("error", "", "volsd", t_transaction, "sync was successful");
   }
-
     
   // ---------------------------------------------------------------------------------------------
   // 6. add to the m_vectors
