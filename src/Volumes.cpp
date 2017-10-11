@@ -407,8 +407,10 @@ int Volumes::remove ( const std::string t_volumeId, const int t_transactionId ){
   
   // delete volume
   for(std::vector<utility::Volume>::iterator it = m_volumes.begin(); it != m_volumes.end(); ++it) {
-    if ( it->id == t_volumeId )
+    if ( it->id == t_volumeId ){
       m_volumes.erase(it);
+      break;
+     }
   }
     
   // write changes to disk
