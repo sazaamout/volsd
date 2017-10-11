@@ -574,7 +574,7 @@ namespace utility
       
     
     std::size_t pos = path.rfind('/');
-    std::string file = path.substr(path.rfind('/')+1);
+    //std::string file = path.substr(path.rfind('/')+1);
     std::string prefix   = path.substr(0, pos);
     
     // ensure that parent dir is created

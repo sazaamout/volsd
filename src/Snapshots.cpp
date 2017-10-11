@@ -264,7 +264,6 @@ int Snapshots::write_to_file(){
     return false;
   }
 
-  std::string line = "";
   
   for(std::vector<Snapshot>::iterator it = m_snapshots.begin(); it != m_snapshots.end(); ++it) {
     myFileOut << it->id << " " << it->timestamp << " " << it->status
