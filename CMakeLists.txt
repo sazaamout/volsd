@@ -41,13 +41,13 @@ set(VOLUMESD    src/volumesd.cpp         src/Utils.cpp src/Logger.cpp src/Volume
 set(VCLIENT     src/volumesd-client.cpp  src/Utils.cpp src/Logger.cpp src/Volumes.cpp src/ClientSocket.cpp src/Socket.cpp  src/Sync.cpp) 
 
 # create the executables
-add_executable(volumesd            ${VOLUMESD})
-add_executable(volumesd-client     ${VCLIENT})
+add_executable(volsd            ${VOLUMESD})
+add_executable(volsd-client     ${VCLIENT})
 
 # installations
 #set(EXE_INSTALLATION_DIR ${CMAKE_BINARY_DIR}/install)
-install(TARGETS volumesd             DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
-install(TARGETS volumesd-client      DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
+install(TARGETS volsd                DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
+install(TARGETS volsd-client         DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
 install(FILES   conf/dispatcher.cfg  DESTINATION ${CFG_INSTALL_DIR} COMPONENT config  )
 #install(FILES   conf/sync.cfg        DESTINATION ${CFG_INSTALL_DIR} COMPONENT config  )
 
