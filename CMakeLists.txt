@@ -13,12 +13,6 @@ set(DISPATCHER_PATCH_VERSION 0)
 set(DISPATCHER_VERSION
   ${DISPATCHER_MAJOR_VERSION}.${DISPATCHER_MINOR_VERSION}.${DISPATCHER_PATCH_VERSION})
 
-set(SYNC_MAJOR_VERSION 1)
-set(SYNC_MINOR_VERSION 0)
-set(SYNC_PATCH_VERSION 0)
-set(SYNC_VERSION
-  ${SYNC_MAJOR_VERSION}.${SYNC_MINOR_VERSION}.${SYNC_PATCH_VERSION})
-
 set(CLIENT_MAJOR_VERSION 1)
 set(CLIENT_MINOR_VERSION 0)
 set(CLIENT_PATCH_VERSION 0)
@@ -44,21 +38,18 @@ configure_file (
 set(CMAKE_CXX_FLAGS "-std=c++0x -pthread")
  
 set(VOLUMESD    src/volumesd.cpp         src/Utils.cpp src/Logger.cpp src/Volumes.cpp src/ServerSocket.cpp src/Socket.cpp src/Sync.cpp src/Snapshots.cpp src/ClientSocket.cpp)
-set(SYNC        src/sync.cpp             src/Utils.cpp src/Logger.cpp src/Volumes.cpp src/ServerSocket.cpp src/Socket.cpp src/Sync.cpp)
 set(VCLIENT     src/volumesd-client.cpp  src/Utils.cpp src/Logger.cpp src/Volumes.cpp src/ClientSocket.cpp src/Socket.cpp  src/Sync.cpp) 
 
 # create the executables
 add_executable(volumesd            ${VOLUMESD})
-add_executable(sync                ${SYNC})
 add_executable(volumesd-client     ${VCLIENT})
 
 # installations
 #set(EXE_INSTALLATION_DIR ${CMAKE_BINARY_DIR}/install)
 install(TARGETS volumesd             DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
-install(TARGETS sync                 DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
 install(TARGETS volumesd-client      DESTINATION ${EXE_INSTALL_DIR} COMPONENT binaries)
 install(FILES   conf/dispatcher.cfg  DESTINATION ${CFG_INSTALL_DIR} COMPONENT config  )
-install(FILES   conf/sync.cfg        DESTINATION ${CFG_INSTALL_DIR} COMPONENT config  )
+#install(FILES   conf/sync.cfg        DESTINATION ${CFG_INSTALL_DIR} COMPONENT config  )
 
 message("--------------------------------------------------")
 message("Binaries are installed in in : ${EXE_INSTALL_DIR}")

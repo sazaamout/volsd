@@ -75,4 +75,6 @@ Next version:
  - volsd-client will pull all of the informatom rather than volsd pushes to them based on a signal that was
 sent by volsd. This triggered from a push script to volsd. Also, the volsd-client will be continuosly working on 
 the client servers and are pulling data periodically.
-
+ - When the client server is stopped, we need to not to sync to it. So make sure that we have a mechanizm to 
+   catch server status
+   

@@ -70,6 +70,8 @@ std::string ServerSocket::client_ip () {
   char *clientip = new char[20];
   strcpy(clientip, inet_ntoa(c.sin_addr));
   std::string result(clientip);
+  delete[] clientip;
+  clientip = NULL;
   return result;
 }
 

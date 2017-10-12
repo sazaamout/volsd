@@ -206,9 +206,6 @@ namespace utility
         std::stringstream ss(line);
         ss >> key >> value;
       
-
-      
-      
       if ( key == "Hostname") {
         conf.Hostname = value;
       }else if (key == "MaxIdleDisk") 
@@ -274,7 +271,8 @@ namespace utility
         conf.EmailPushError = value;
       else if ( key == "EmailPushEmail" ) 
         conf.EmailPushEmail = value;
-      else continue;
+      else 
+        continue;
 
       line="";
       

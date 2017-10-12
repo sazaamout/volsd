@@ -386,7 +386,7 @@ bool Volumes::write_to_file( int transactionId ){
     return false;
   }
 
-  std::string line = "";
+  
   
   for(std::vector<utility::Volume>::iterator it = m_volumes.begin(); it != m_volumes.end(); ++it) {
     myFileOut << it->id << " " << it->status << " " << it->attachedTo 
