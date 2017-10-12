@@ -1,10 +1,6 @@
 # Volsd (volume dispatcher) #
 
-  *Volsd* is a thread-safe solution that replaces any type of centralized NAS/SAN storage when using Amazon Web Services. Using any type of cloud NAS that serves many webservers in an Amazon Autoscaling group will introduce latency to the client. Latency is due to the fact that data have to travelling via the network from the NAS/SAN storage to the web server that is processing the client request. The only way to reduce the latency when using such architecture, is to purchase stronger EC2 instance which could cost a lot of money.
-  
-  When using *Volsd*, newly created web servers will request a volume that is synced and up to date already and in few seconds the volume is mounted locally. The Idea behind *Volsd* is simple, *Volsd* creates and maintains a pre-set number of volumes and mount these volumes locally (where *Volsd* installed). It ensures that they are always identical by syncing them periodically. When *Volsd* receives a volume request from a production/webservers, it umount one of the local volume and sends it to the requestor, who intern mounts this volume locally using one of the *Volsd* component called client. To speed up the syncing process, *Volsd* makes a snapshot of the target filesystem every predetermined interval so that when a new volume is created using the latest snapshot.  
-
-  *Volsd* allow users to push/delete a file/directory to all of the maintained volumes, whether these volumes are mounted locally or mounted on a remote server. 
+  Built for systems that are hosted on Amazon Web Services, *Volsd* is a thread-safe solution that can be used to substitute any type of a cloud NAS. Using a cloud NAS in your system has some advantages, but also, disadvantages such as the unavoidable transaction latency. To reduce latency, you can  upgrade the EC2 instances that your NAS's and the web servers uses to an instance with better network throughput. Upgrading the instance will reduce latency by a little but it will cost much more money. The best solution for such problem is to have the data stored locally in every web server. The problem with this approach is syncing these data and the time it takes to copy these data to a newly created web server especially when using Amazon AutoScaling Service. *Volsd* solves this problem but ensuring that there is a preset number of EBS Volumes that are synced periodically and up to date all the time. Newly created web servers can request a volume from *Volsd*, mount it, and immediately start to serve requests. Because the volumes are always synced, these is no need to wait for data to be copied.  Also, *Volsd* maintains a list for all of the web servers and uses this list to sync these volumes and to push changes when needed. Using *Volsd*, you can push/delete a file/directory to all of the web servers and to the preset idle volumes. 
 
 The system consist of the following components:
 1. Volsd
@@ -52,13 +48,18 @@ The system consist of the following components:
   - Rsync version 3.0.6
   - cmake version 2.8.12.2
 
-  *Note: This program is tested on a centos 6.x EC2 Instance (t1.small)
-
+  *Note: This program is tested on the following operating systems: 
+    - Amazon Linux
+    - Centos 6.x and 7.x
+    - Ubuntu 16.4.
+    - Fedora
+    
 
 # Future work #
   - Testing it on other linux operating systems
-  - This program was done in a hurry, some of the code are not the most effecient
-  - Add the ability to write volume informations to an s3 bucket
+  - Use Amazon s3 object to store volumes and snapshots information rather than storing in the local disk.
+  - Volsd syncs the volumes by pushing changes. It would be more better if clients servers pull these changes from volsd's server. This way, volsd server can focus on doing other tasks
+  - Maintain client's server status so that Volsd pushes changes to all 'running' EC2 instances. Currently, volsd will attempt to push the changes without checking if ec2 instance is stopped which will fail and get logged. 
   - Add feedback between the *volsd-client* program and the *Volsd* when a push/delete of a file is issued
   - Uses AWS SDK rather than awscli
-  - currently, volsd push changes to all servers mounting the needed filesystem. It would better if clients pull these changes from volsd's server
+  
