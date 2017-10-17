@@ -741,27 +741,27 @@ int main ( int argc, char* argv[] ) {
 
          // 3 check if main program have some opreation
          while (snapshotsOpPending){
-           std::cout << "waiting for snaphshot thread to finish\n";
+           //std::cout << "waiting for snaphshot thread to finish\n";
            sleep(1);
          }
          
          while (diskCreateOpPending){
-           std::cout << "waiting for DiskCreate operation to finish\n";
+           //std::cout << "waiting for DiskCreate operation to finish\n";
            sleep(1);
          }
          
          while (diskRemoveOpPending){
-           std::cout << "waiting for DiskRemove operation to finish\n";
+           //std::cout << "waiting for DiskRemove operation to finish\n";
            sleep(1);
          }
          
          while (diskAcquireOpPending){
-           std::cout << "waiting for DiskAcquire operation to finish\n";
+           //std::cout << "waiting for DiskAcquire operation to finish\n";
            sleep(1);
          }
          
          while (diskReleaseOpPending){
-           std::cout << "waiting for DiskRelease operation to finish\n";
+           //std::cout << "waiting for DiskRelease operation to finish\n";
            sleep(1);
          }
          

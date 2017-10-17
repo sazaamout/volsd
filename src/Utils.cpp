@@ -511,8 +511,8 @@ namespace utility
     const char* type = "ext4";
     const unsigned long mntflags = 0;
     const char* opts = "";   /* 65534 is the uid of nobody */
-    std::cout << src << std::endl;
-    std::cout << trgt << std::endl;
+    //std::cout << src << std::endl;
+    //std::cout << trgt << std::endl;
     int result = mount(src, trgt, type, mntflags, opts);
 
     if (result == 0) {
