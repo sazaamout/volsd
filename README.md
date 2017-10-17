@@ -21,8 +21,8 @@ The system consist of the following components:
 
 # Main features #
 ## Pre Installation ##
-  1. ensure that the root user is set to perform passwordless ssh in to all target servers. This means you have to setup ssh keys for the root user. All target servers must have the root key when they are starting. You can configure one server with root keys and save it as image to be used in an autoscaling group.
-  2. ensure that aws cli has the correct permissions to perform s3 and ec2 operations.
+  1. Ensure that the root user is able to perform passwordless ssh in to all target servers. To allow root user to perform ssh without password, follow the instruction on the following link. http://www.linuxproblem.org/art_9.html
+  2. Ensure that aws-cli package is installed and configured. This means that the access-code and the secret keys have to be supplied. Make sure that aws-cli is alloed to perform s3 and ec2 operations.
   
 ## Installation ##
   1. clone the project
