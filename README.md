@@ -31,7 +31,8 @@ The system consist of the following components:
   ```
   cmake /path/to/project/root/dir
   ```
-  4. make; make install
+  4. make
+  5. sudo make install
 
 ## Using Volsd ##
   type the following commands:
