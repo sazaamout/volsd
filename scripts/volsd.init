@@ -1,0 +1,83 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          volsd
+# Required-Start:    $local_fs $network $named $time $syslog
+# Required-Stop:     $local_fs $network $named $time $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Description:       Volume Disatcher
+### END INIT INFO
+
+NAME=volsd
+SCRIPT=/usr/local/bin/volsd
+RUNAS=root
+
+PIDFILE=/var/run/volsd.pid
+LOGFILE=/var/log/messages.log
+
+start() {
+  printf "%-30s" "Starting $NAME..." 
+  if [ -e "$PIDFILE" ]; then
+    echo -e "\e[31m[Already Running]\e[0m"
+    return 1
+  fi
+  local CMD="$SCRIPT &> \"$LOGFILE\" & echo \$!"
+  su -c "$CMD" $RUNAS > "$PIDFILE"
+  echo -e "\e[32m[OK]\e[0m"
+}
+
+stop() {
+  printf "%-30s" "Stopping $NAME..." 
+  if [ ! -e "$PIDFILE" ] || ! kill -0 $(cat "$PIDFILE"); then
+    echo -e "\e[31m[Not Running]\e[0m"
+    return 1
+  fi
+  kill -15 $(cat "$PIDFILE") && rm -f "$PIDFILE"
+  echo -e "\e[32m[OK]\e[0m"
+}
+
+force_stop() {
+  printf "%-30s" "Forcing $NAME to stop..."
+  if [ ! -e "$PIDFILE" ] || ! kill -0 $(cat "$PIDFILE"); then
+    echo -e "\e[31m[Not Running]\e[0m"
+    return 1
+  fi
+  kill -9 $(cat "$PIDFILE") && rm -f "$PIDFILE"
+  echo -e "\e[32m[OK]\e[0m"
+}
+
+status() {
+  printf "%-30s" "$NAME..."
+  if [ -f "$PIDFILE" ]; then
+    PID=`cat $PIDFILE`
+    if [ -z "`ps axf | grep ${PID} | grep -v grep`" ]; then
+      echo -e "\e[31m[Process dead but pidfile exists]\e[0m"
+    else
+      echo -e "\e[32m[Running]\e[0m"
+    fi
+  else
+    echo -e "\e[32m[Not running]\e[0m"
+  fi
+}
+
+case "$1" in
+  start)
+    start
+    ;;
+  status)
+    status
+    ;;
+  stop)
+    stop
+    ;;
+  kill)
+    force_stop
+    ;;
+  restart)
+    stop
+    start
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|kill|restart|status}"
+esac
+
