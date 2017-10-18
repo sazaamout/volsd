@@ -1,5 +1,4 @@
 /build/*
 /nbproject
-/scripts
 include/Config.h
 docs/RoadMap.txt
