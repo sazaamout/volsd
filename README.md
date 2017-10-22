@@ -3,7 +3,6 @@ Built for systems that are hosted on Amazon Web Services, *Volsd* is a solution 
  
 *Volsd* solves these problems by maintaining a pre-set number of EBS Volumes that are synced periodically and up to date all the time. These (idle) EBS Volumes will be automatically mounted on a Newly created web server using a volsd-client program. Because the volumes are always synced, these is no need to wait for data to be copied and the newly created web server can start serving request immediately.  Pushing a changes such as new file/directory is created is an easy task and *Volsd* will ensure that your changes are applied to all web servers and to all idle volumes.
 
-
 The system consist of the following components:
 ### *Volsd* ### 
    - Process "DiskAcquireRequest" from clients (EC2 Instances)
@@ -19,7 +18,6 @@ The system consist of the following components:
    - This program must start when an instance bootup for the first time. It will send a DiskRequest to the *Volsd* to acquire a volume. The *Volsd* will detach a volume and send it that volume's id to the client. The client will mount the acquired volume As soon as it receives the volume Id.
    - When the instance is terminated, the client program will release the mounted volume and send a "DiskRelease" message to the *Volsd* which in turn will remove that volume from the disks list.
 
-# Main features #
 ## Pre Installation ##
   1. Ensure that the root user is able to perform passwordless ssh in to all target servers. To allow root user to perform ssh without password, follow the instruction on the following link. http://www.linuxproblem.org/art_9.html
   2. Ensure that aws-cli package is installed and configured. This means that the access-code and the secret keys have to be supplied. Make sure that aws-cli is alloed to perform s3 and ec2 operations.
