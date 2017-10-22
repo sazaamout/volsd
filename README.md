@@ -46,17 +46,16 @@ The system consist of the following components:
   [-c] : Optional, used this option only if you changed the location if the volsd.conf file. the default is /etc/volsd/volsd.conf
     
 ## How to run the volsd-client? ##
-  You can get the *volsd-client* program from the build directory. There are many senarios that can be used with the client
-  1. place the client program in an s3 bucket and download it in to the newly lucnhed ec2 instance using the instance User Data. For more information on using 'User Data'  please visit the following link. You can place the folloiwng code in your instance's 'user data' section
+  You can get the *volsd-client* program from the build directory. There are many scenarios that can be used with the client
+  1. place the client program in an s3 bucket and download it in to the newly lunched ec2 instance using the instance’s User Data. For more information on using 'User Data'  please visit the following link. You can place the following code in your instance's 'user data' section
   ```
   cd /usr/local/src
   aws s3 cp s3://location/of/client/program/in/s3/volsd-client .
   chmod u+x volsd-client
+  # run the client program to aquire a volume for this instance
   volsd-client -a /directory/to/be/used/to/mount/the/volume
   ```
-  2. The client program (executable/binary) have to be part of the EC2 image. You can wither install it
-  and save the image. Or you can put it on an s3 bucket and download to the instane being created 
-  using the user-data. 
+  2. The client program (executable/binary) have to be part of the EC2 image. You can either install it and create an image of that instance. Or you can put it on an s3 bucket and download to the insane being created using the user-data. 
   
 
 # Dependencies And System Requirements #
