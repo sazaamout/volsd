@@ -324,7 +324,8 @@ namespace utility
   // Unix Time FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
   std::string unixTime (){
-    std::time_t result = std::time(nullptr);
+    //std::time_t result = std::time(nullptr);
+    std::time_t result = std::time(NULL);
     return to_string(result);
   }
 
@@ -441,7 +442,7 @@ namespace utility
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   bool folders_create(std::string prefix, std::size_t pos) {
 
-    if ( prefix.back() != '/' ) {
+    if ( prefix[ prefix.length()-1 ] != '/' ) {
       prefix = prefix + '/';
     }
 
