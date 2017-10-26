@@ -97,12 +97,21 @@ int Sync::synchronize ( const std::string t_source,
   if ( destination[ destination.length() - 1 ] != '/') {
     destination.append("/");
   }
-
-  std::string rsyncCmd = "rsync -alpti --delete " + 
-                          source + " " + 
-                          destination + 
-                          " | awk '{ print $2 }'";
   
+  std::string  rsyncCmd;
+  if (local){
+    rsyncCmd = "rsync -alpti --delete " + 
+                source + " " + 
+                destination + 
+                " | awk '{ print $2 }'";
+  }else {
+    rsyncCmd = "rsync -alptie \"ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no\" --delete " +
+               source + " " +
+               destination +
+               " | awk '{ print $2 }'";
+
+  }
+
   std::string output;
   std::stringstream output_ss, error_ss;
   int res = utility::exec( output, rsyncCmd );
