@@ -1050,7 +1050,7 @@ int Volumes::acquire( const std::string t_targetFileSystem, const std::string t_
   if (!res){
     logger->log("error", "", "volsd", t_transaction, "syntax error in command");
   } else {
-    logger->log("error", "", "volsd", t_transaction, "sync was successful");
+    logger->log("info", "", "volsd", t_transaction, "sync was successful");
   }
     
   // ---------------------------------------------------------------------------------------------
