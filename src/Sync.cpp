@@ -77,7 +77,7 @@ int Sync::synchronize ( const std::string t_source,
 int Sync::synchronize ( const std::string t_source, 
                         const std::string t_destination, 
                         const int t_transId, 
-                        const int local,
+                        const int local
                       ) {
        
   std::string source, destination;
