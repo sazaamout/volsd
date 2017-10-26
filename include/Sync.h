@@ -24,7 +24,7 @@ class Sync
     static  int synchronize ( const std::string t_source, const std::string t_destination, 
                               const int t_transId, Logger *&logger);
                               
-    int synchronize ( const std::string t_source, const std::string t_destination, 
+    int synchronize ( const std::string t_source, const std::string t_destination, const int local,
                       const int t_transId );                              
     std::string get_latest();
     std::string load();

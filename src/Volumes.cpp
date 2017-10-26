@@ -1035,18 +1035,7 @@ int Volumes::acquire( const std::string t_targetFileSystem, const std::string t_
   logger->log("info", "", "volsd", t_transaction, "syncing new volume");
   std::string output;
 
-  //logger->log("debug", "", "volsd", t_transcation, 
-  //            "EXECMD:[echo 'sync " + v.mountPoint + " ' > /dev/tcp/infra1/" + 
-  //            utility::to_string( conf.SyncerServicePort )
-  //           );
-              
-  //int res = utility::exec(output, "echo 'sync " + v.mountPoint + "' > /dev/tcp/infra1/" + 
-  //                        utility::to_string( conf.SyncerServicePort ) 
-  //                       );
-  
-  
-  
-  int res = Sync::synchronize( t_targetFileSystem, v.mountPoint, t_transaction, logger );;
+  int res = Sync::synchronize( t_targetFileSystem, v.mountPoint, t_transaction, logger );
   if (!res){
     logger->log("error", "", "volsd", t_transaction, "syntax error in command");
   } else {

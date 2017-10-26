@@ -32,12 +32,13 @@ int Sync::synchronize ( const std::string t_source,
   source = t_source;
   destination = t_destination;
    
-  // check if path exist
+  // if local, check if path exist
   if ( !utility::is_dir( destination.c_str() ) ) {
     logger->log("error", "", "volsd", t_transId, "path:[" +  destination + "] does not exist");
     return 0;
   } 
-    
+  
+  
     
   // check if t_source and t_destination ends with / 
   if ( source[ source.length() - 1 ] != '/') {
@@ -75,7 +76,8 @@ int Sync::synchronize ( const std::string t_source,
 
 int Sync::synchronize ( const std::string t_source, 
                         const std::string t_destination, 
-                        const int t_transId
+                        const int t_transId, 
+                        const int local,
                       ) {
        
   std::string source, destination;
@@ -83,11 +85,10 @@ int Sync::synchronize ( const std::string t_source,
   destination = t_destination;
    
   // check if path exist
-  if ( !utility::is_dir( destination.c_str() ) ) {
+  if (( !utility::is_dir( destination.c_str() ) ) && (local) ) {
     logger->log("error", "", "volsd", t_transId, "path:[" +  destination + "] does not exist");
     return 0;
   } 
-    
     
   // check if t_source and t_destination ends with / 
   if ( source[ source.length() - 1 ] != '/') {

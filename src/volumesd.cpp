@@ -624,9 +624,9 @@ int main ( int argc, char* argv[] ) {
     std::vector<utility::Volume> v = volumes.get_list();
     for(std::vector<utility::Volume>::iterator it = v.begin(); it != v.end(); ++it) {
       if ( it->attachedTo == "localhost" ) {
-        sync.synchronize( conf.TargetFilesystemMountPoint, it->mountPoint, 4 );  
+        sync.synchronize( conf.TargetFilesystemMountPoint, it->mountPoint, 4, 1 );  
       } else {
-        sync.synchronize( conf.TargetFilesystemMountPoint, it->attachedTo + ":" + it->mountPoint, 4 );  
+        sync.synchronize( conf.TargetFilesystemMountPoint, it->attachedTo + ":" + it->mountPoint, 4, 0 );  
       }
     }
     
