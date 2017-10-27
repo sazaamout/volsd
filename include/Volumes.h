@@ -80,7 +80,7 @@ class Volumes
     int release_volume( std::string& v, std::string t_instanceId, std::string t_mountPoint, 
                              int t_transactionId );
     
-    int release (std::string &volumeId, int transactionId);
+    int release (std::string &volumeId, int t_transactionId);
     int acquire( const std::string t_targetFileSystem, const std::string t_snapshotId, 
                  const std::string t_rootMountsFolder, const std::string t_instanceId, 
                  const int t_transaction );

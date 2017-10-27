@@ -578,7 +578,7 @@ int main ( int argc, char* argv[] ) {
     std::string volumeId;
     int res = volumes.release( volumeId, t_transactionId );
     
-    // delete from amazone
+    // delete from amazon
     logger.log("debug", "", "volsd", t_transactionId, "deleting volume in aws enviroment", "RV");  
     volumes.del(volumeId, t_transactionId);
     

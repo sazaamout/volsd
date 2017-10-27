@@ -757,75 +757,87 @@ int Volumes::volume_exist( const std::string volId ){
 // =================================================================================================
 // Function: Release
 // =================================================================================================
-int Volumes::release (std::string &volumeId, int transactionId) {
+int Volumes::release (std::string &volumeId, int t_transactionId) {
   
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // 1. Get Idle Volume  
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
   int idleVolIndex;
+  utility::Volume v;
   
-  logger->log("info", "", "volsd", transactionId, "looking for idle volume");
-  if ( !get_idle_volume( idleVolIndex, transactionId ) ) {
-    logger->log("error", "", "volsd", transactionId, "no more idle volume available");
+  logger->log("info", "", "volsd", t_transactionId, "looking for idle volume");
+  if ( !get_idle_volume( idleVolIndex, t_transactionId ) ) {
+    logger->log("error", "", "volsd", t_transactionId, "no more idle volume available");
     return -1;
   } else {
-    logger->log("info", "", "volsd", transactionId, 
-                "idle volume found:[" + m_volumes[idleVolIndex].id + "]");
-    
-    if (!update(m_volumes[idleVolIndex].id, "status", "inprogress", transactionId)) {
-      logger->log("info", "", "volsd", transactionId, "failed to update volumes status");
-    }
-    logger->log("info", "", "volsd", transactionId, "volume's status was changed to 'inprogress'");
-  }
+    // store the volume information,
+    // the mvolumes vector get changes alot, we cannot use index to retried information since index 
+    // might change where it is pointing to.
+    v.id         = m_volumes[idleVolIndex].id;
+    v.status     = m_volumes[idleVolIndex].status;
+    v.attachedTo = m_volumes[idleVolIndex].attachedTo;
+    v.mountPoint = m_volumes[idleVolIndex].mountPoint;
+    v.device     = m_volumes[idleVolIndex].device;
   
+    logger->log("info", "", "volsd", t_transactionId, 
+                "idle volume found:[" + v.id + "]");
+    
+    if (!update(v.id, "status", "inprogress", t_transactionId)) {
+      logger->log("info", "", "volsd", t_transactionId, "failed to update volumes status");
+    }
+    logger->log("info", "", "volsd", t_transactionId, "volume's status was changed to 'inprogress'");
+  }
+
+ 
+    
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
   // 2. unmount disk
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
-  logger->log("info", "", "volsd", transactionId, 
-              "umounting volume:[" + m_volumes[idleVolIndex].id + "]");
+  logger->log("info", "", "volsd", t_transactionId, 
+              "umounting volume:[" + v.id + "]");
   
-  if (!umount( m_volumes[idleVolIndex].id, m_volumes[idleVolIndex].mountPoint, transactionId )) {
-    logger->log("error", "", "volsd", transactionId, "failed to umount volume");
-    logger->log("info", "", "volsd", transactionId, "change the volume status to failedToUnmount");
+  if (!umount( v.id, v.mountPoint, t_transactionId )) {
+    logger->log("error", "", "volsd", t_transactionId, "failed to umount volume");
+    logger->log("info", "", "volsd", t_transactionId, "change the volume status to failedToUnmount");
 
-    if (!update(m_volumes[idleVolIndex].id, "status", "failedToUnmount", transactionId)) {
-      logger->log("info", "", "volsd", transactionId, "failed to update volumes status");
+    if (!update(v.id, "status", "failedToUnmount", t_transactionId)) {
+      logger->log("info", "", "volsd", t_transactionId, "failed to update volumes status");
     }
     
     return -2;
   }
-  logger->log("info", "", "volsd", transactionId, "volume umounted");
+  logger->log("info", "", "volsd", t_transactionId, "volume umounted");
   
       
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
   // 3. Detach the volume
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
-  logger->log("info", "", "volsd", transactionId, "detaching volume");
-  if (!detach(m_volumes[idleVolIndex].id, transactionId)) {
-    logger->log("error", "", "volsd", transactionId, "failed to detach volume");
+  logger->log("info", "", "volsd", t_transactionId, "detaching volume");
+  if (!detach(v.id, t_transactionId)) {
+    logger->log("error", "", "volsd", t_transactionId, "failed to detach volume");
         
-    if (!update(m_volumes[idleVolIndex].id, "status", "failedToDetach", transactionId)) {
-      logger->log("info", "", "volsd", transactionId, "failed to update volumes status");
+    if (!update(v.id, "status", "failedToDetach", t_transactionId)) {
+      logger->log("info", "", "volsd", t_transactionId, "failed to update volumes status");
     }
     
     return -3;
   }
-  logger->log("info", "", "volsd", transactionId, "volume was detached");
+  logger->log("info", "", "volsd", t_transactionId, "volume was detached");
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
   // 4. Remove MountPoint
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
-  logger->log("info", "", "volsd", transactionId, 
-              "remove mountpoint:[" + m_volumes[idleVolIndex].mountPoint +"]");
+  logger->log("info", "", "volsd", t_transactionId, 
+              "remove mountpoint:[" + v.mountPoint +"]");
   
-  if (!utility::folder_remove(m_volumes[idleVolIndex].mountPoint)){
-    logger->log("error", "", "volsd", transactionId, "could not remove mountpoint");
+  if (!utility::folder_remove(v.mountPoint)){
+    logger->log("error", "", "volsd", t_transactionId, "could not remove mountpoint");
   } else {
-    logger->log("info", "", "volsd", transactionId, "mount point was removed");
+    logger->log("info", "", "volsd", t_transactionId, "mount point was removed");
   }
 
   sleep(5);
-  volumeId = m_volumes[idleVolIndex].id;
+  volumeId = v.id;
   
   return 1;
 }
