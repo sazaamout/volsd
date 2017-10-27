@@ -216,7 +216,7 @@ int main ( int argc, char* argv[] ) {
       std::thread creatDisk_thread( createDisk_handler, 
                                     std::ref(snapshots), 
                                     std::ref(volumes), 
-                                    2 );
+                                    utility::get_transaction_id() );
       creatDisk_thread.detach();
     }
     
@@ -226,7 +226,7 @@ int main ( int argc, char* argv[] ) {
       std::thread removeDisk_thread( removeDisk_handler, 
                                     std::ref(snapshots), 
                                     std::ref(volumes), 
-                                    2);
+                                    utility::get_transaction_id() );
       removeDisk_thread.detach();
     }
     
