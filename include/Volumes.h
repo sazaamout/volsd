@@ -38,7 +38,7 @@ class Volumes
     bool load();
     
     utility::Volume* resize(int resize_amount);
-    bool write_to_file( int transactionId );
+    bool write_to_file( int t_transactionId );
     bool ebsvolume_dump_to_file(int transactionId);
     
   public:

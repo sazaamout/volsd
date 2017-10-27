@@ -572,16 +572,18 @@ int main ( int argc, char* argv[] ) {
     diskRemoveOpPending = 1;
     
     Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
+
     
+    // umount, detach, remove mountpoint    
     std::string volumeId;
-  
     int res = volumes.release( volumeId, t_transactionId );
-    // delete from volumes list (m_volumes)
-    logger.log("debug", "", "volsd", t_transactionId, "delete volume from volumes list", "RV");  
+    
+    // delete from amazone
+    logger.log("debug", "", "volsd", t_transactionId, "deleting volume in aws enviroment", "RV");  
     volumes.del(volumeId, t_transactionId);
     
-    // delete from aws
-    logger.log("info", "", "volsd", t_transactionId, "delete volume in aws enviroment", "RV");  
+    // delete vols list volumes list (m_volumes)
+    logger.log("info", "", "volsd", t_transactionId, "deleting volume from volumes list", "RV");  
     if ( !volumes.remove(volumeId, t_transactionId) ){
       logger.log("error", "", "volsd", t_transactionId, 
                  "failed to delete volume:[" + volumeId + "] from amazon site", "RV");

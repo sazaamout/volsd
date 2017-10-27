@@ -370,9 +370,9 @@ int Volumes::get_idle_number() {
 }
 
 
-bool Volumes::write_to_file( int transactionId ){
+bool Volumes::write_to_file( int t_transactionId ){
   // write back to file
-  logger->log("debug", "", "volsd", transactionId, 
+  logger->log("debug", "", "volsd", t_transactionId, 
               "writing changes to volumes file", 
               "write_to_file");
   
@@ -380,7 +380,7 @@ bool Volumes::write_to_file( int transactionId ){
   myFileOut.open(_volumeFile.c_str(), std::fstream::out | std::fstream::trunc);
 
   if (!myFileOut.is_open()) {
-    logger->log("error", "", "volsd", transactionId, 
+    logger->log("error", "", "volsd", t_transactionId, 
                 "could not open volumes file", 
                 "write_to_file");
     return false;
@@ -413,9 +413,9 @@ int Volumes::remove ( const std::string t_volumeId, const int t_transactionId ){
      }
   }
     
-  // write changes to disk
+  // write changes to disk file
   m.lock();
-  int res = write_to_file( transactionId );
+  int res = write_to_file( t_transactionId );
   m.unlock();
   
   if (!res) {
@@ -771,11 +771,11 @@ int Volumes::release (std::string &volumeId, int transactionId) {
   } else {
     logger->log("info", "", "volsd", transactionId, 
                 "idle volume found:[" + m_volumes[idleVolIndex].id + "]");
-    logger->log("info", "", "volsd", transactionId, "volume's status was changed to 'inprogress'");
     
     if (!update(m_volumes[idleVolIndex].id, "status", "inprogress", transactionId)) {
       logger->log("info", "", "volsd", transactionId, "failed to update volumes status");
     }
+    logger->log("info", "", "volsd", transactionId, "volume's status was changed to 'inprogress'");
   }
   
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
