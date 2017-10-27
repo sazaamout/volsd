@@ -271,6 +271,8 @@ namespace utility
         conf.EmailPushError = value;
       else if ( key == "EmailPushEmail" ) 
         conf.EmailPushEmail = value;
+      else if ( key == "RemoteMountPoint" ) 
+        conf.RemoteMountPoint = value;
       else 
         continue;
 

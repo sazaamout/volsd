@@ -459,7 +459,7 @@ int main ( int argc, char* argv[] ) {
       logger.log("info", "", "volsd", transId, "ACK recived from client: [OK]", "VA" );      
 
       //label disk as used
-      if (!volumes.update(volumeId, "status", "used", transId, ip)) {
+      if (!volumes.update(volumeId, "status", "used", transId, ip, conf.RemoteMountPoint)) {
         logger.log("info", "", "volsd", transId, "failed to update volumes status","VA");
       }
       

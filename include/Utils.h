@@ -75,7 +75,7 @@ namespace utility
     std::string EmailPushOutput;
     std::string EmailPushError;
     std::string EmailPushEmail;
-
+    std::string RemoteMountPoint;
 	};
 	
 
