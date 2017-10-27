@@ -211,22 +211,22 @@ int main ( int argc, char* argv[] ) {
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     value = volumes.get_idle_number() + inProgressVolumes;
     if ( value < conf.MaxIdleDisk ){
-      
-      logger.log( "debug", "", "volsd", 2, "creating a new volume" );  
+      int tranId = utility::get_transaction_id();
+      logger.log( "debug", "", "volsd", tranId, "creating a new volume" );  
       std::thread creatDisk_thread( createDisk_handler, 
                                     std::ref(snapshots), 
                                     std::ref(volumes), 
-                                    utility::get_transaction_id() );
+                                    tranId );
       creatDisk_thread.detach();
     }
     
     if ( value > conf.MaxIdleDisk ){
-      
-      logger.log( "debug", "", "volsd", 2, "removing a volume" );  
+      int tranId = utility::get_transaction_id();
+      logger.log( "debug", "", "volsd", tranId, "removing a volume" );  
       std::thread removeDisk_thread( removeDisk_handler, 
                                     std::ref(snapshots), 
                                     std::ref(volumes), 
-                                    utility::get_transaction_id() );
+                                    tranId );
       removeDisk_thread.detach();
     }
     
