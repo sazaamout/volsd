@@ -453,7 +453,8 @@ int Volumes::add ( const utility::Volume t_volumes, const int t_transactionId ){
 // Function: Update
 // =================================================================================================
 int Volumes::update ( const std::string t_volumeId, const std::string t_key, 
-                      const std::string t_value,    const int t_transactionId){
+                      const std::string t_value,    const int t_transactionId, 
+                      std::string t_ip){
 
   // 1. find the volume record
   bool found = false;
@@ -474,6 +475,10 @@ int Volumes::update ( const std::string t_volumeId, const std::string t_key,
   // 2. update the value
   if ( t_key == "status") {
     m_volumes[i].status = t_value;
+    
+    if ( t_ip != "" ) {
+      m_volumes[i].attachedTo = t_ip;
+    }
   } 
   
   // 3. write changes to disk
