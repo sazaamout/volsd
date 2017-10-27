@@ -61,6 +61,7 @@ The system consist of the following components:
   - AWS CLI version 1.10.60 (minimum) installed and configured for the root user
   - Rsync version 3.0.6
   - cmake version 2.8.12.2
+  - minimum gcc version: 4.4.7
 
   *Note: This program is tested on the following operating systems: 
     - Amazon Linux
