@@ -1,8 +1,8 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <stdlib.h> // used for system() and atoi
-#include <stdio.h> // userd for popen()
+#include <stdlib.h>  // used for system() and atoi
+#include <stdio.h>   // userd for popen()
 #include <algorithm> // used for remove
 
 #include "ClientSocket.h"
@@ -150,7 +150,7 @@ int main ( int argc, char* argv[] )
             return false;
           } 
           // must return the mountpoint so that the server will store it.
-          ack = "OK";
+          //ack = "OK";
           ack = "OK " + mountPoint;
           
           client_socket << ack;

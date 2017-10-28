@@ -457,7 +457,7 @@ int main ( int argc, char* argv[] ) {
     // if client successfuly mounted filestsrem, then update disk status and remove mount point
     
     // message format: "status [mountpoint]"
-    std::stringstream ss;
+    std::stringstream ss(ack);
     std::string status, mountpoint;
     ss >> status >> mountpoint;
     
