@@ -127,7 +127,7 @@ int main ( int argc, char* argv[] )
         logger.log("info", "", "volsd-client", 0, "response from server:[" + reply + "]");
  
         if (reply.compare("MaxDisksReached") == 0) {
-          logger.log("error", "", "volsd-client", 0, "Maimum Number of volume reached");
+          logger.log("error", "", "volsd-client", 0, "Maximum Number of volume reached");
           return false;
         
         }else if (reply.compare("umountFailed") == 0) {
@@ -149,7 +149,10 @@ int main ( int argc, char* argv[] )
             client_socket << ack;
             return false;
           } 
+          // must return the mountpoint so that the server will store it.
           ack = "OK";
+          ack = "OK " + mountPoint;
+          
           client_socket << ack;
         }
       } catch ( SocketException& ) {}

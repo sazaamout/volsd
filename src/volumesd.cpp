@@ -455,11 +455,17 @@ int main ( int argc, char* argv[] ) {
     }
     //********* AT THIS POINT, Volume is unmounted and detach but Not delete from list ***********//
     // if client successfuly mounted filestsrem, then update disk status and remove mount point
-    if (ack.compare("OK") == 0){
+    
+    // message format: "status [mountpoint]"
+    std::stringstream ss;
+    std::string status, mountpoint;
+    ss >> status >> mountpoint;
+    
+    if ( status == "OK"){
       logger.log("info", "", "volsd", transId, "ACK recived from client: [OK]", "VA" );      
 
       //label disk as used
-      if (!volumes.update(volumeId, "status", "used", transId, ip, conf.RemoteMountPoint)) {
+      if ( !volumes.update(volumeId, "status", "used", transId, ip, mountpoint) ) {
         logger.log("info", "", "volsd", transId, "failed to update volumes status","VA");
       }
       
@@ -473,6 +479,7 @@ int main ( int argc, char* argv[] ) {
 
       // remove volumes from m_volumes
       volumes.remove(volumeId, transId);
+      
       
       // this is commented out since we are going to have the client to remove the volumes
       //logger.log("info", "", "volsd", transId, "delete volume from Amazone list");  
