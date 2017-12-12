@@ -95,7 +95,8 @@ class Volumes
     
     std::vector<utility::Volume>& get_list();
   
-
+    int is_attached( std::string t_instanceId, std::string t_volumeId, std::string t_device, int t_transactionId, 
+                     Logger& logger);
 
 };
 

@@ -558,6 +558,16 @@ int Volumes::is_used(std::string mountPoint, bool d, int transactionId, Logger& 
   return 0;
 }
 
+/ =================================================================================================
+// Function: Is Attched
+// =================================================================================================
+int Volumes::is_attached( std::string t_instanceId, std::string t_volumeId, std::string t_device, 
+                          int t_transactionId, Logger& logger){
+  logger.log("debug", "", "volsd", transactionId, "checking if volume is mounted");
+  //false
+  return 0;
+}
+
 
 // =================================================================================================
 // Function: RELEASE_VOLUME

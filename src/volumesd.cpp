@@ -893,8 +893,7 @@ int main ( int argc, char* argv[] ) {
     }
   }
   
-  
-  // -------------------------------------------------------------------
+    // -------------------------------------------------------------------
   // Ensure Mounted Function
   // -------------------------------------------------------------------
   int ensure_mounted(Volumes &volumes, Logger &logger){
@@ -907,6 +906,13 @@ int main ( int argc, char* argv[] ) {
     if ( !utility::is_mounted( conf.TargetFilesystemMountPoint ) ){
       logger.log("info", "", "volsd", 0, "Target filesystem [" +  
                  conf.TargetFilesystemMountPoint + "] is not mounted. >> mounting ...");
+                 
+      // since it is not mounted, check if volume is attached
+      if ( !volumes.is_attached( instance_id, conf.TargetFilesystem, conf.TargetFilesystemDevice, 0, logger ) ) {
+		  logger.log("info", "", "volsd", 0, "TargetFilesystem is not attached");
+		  return 0;
+	  }
+      
       if ( !utility::mountfs(output, conf.TargetFilesystemMountPoint, conf.TargetFilesystemDevice) ) 
       {
         logger.log("info", "", "volsd", 0, "cannot mount target filesystem. " + output);
@@ -922,5 +928,3 @@ int main ( int argc, char* argv[] ) {
     return 1;
   }
 
-
-  
