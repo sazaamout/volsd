@@ -21,7 +21,10 @@ The system consist of the following components:
 ## Pre Installation ##
   1. Ensure that the root user is able to perform passwordless ssh in to all target servers. To allow root user to perform ssh without password, follow the instruction on the following link. http://www.linuxproblem.org/art_9.html
   2. Ensure that aws-cli package is installed and configured. This means that the access-code and the secret keys have to be supplied. Make sure that aws-cli is alloed to perform s3 and ec2 operations.
-  
+  3. execute the following command:
+  ```
+  yum install gcc-c++ cmake
+  ```
 ## Installation ##
   1. Clone the project using *git clone* command
   2. There are two differet CMakeLists.txt files,
