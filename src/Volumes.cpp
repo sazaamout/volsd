@@ -558,14 +558,48 @@ int Volumes::is_used(std::string mountPoint, bool d, int transactionId, Logger& 
   return 0;
 }
 
-/ =================================================================================================
+
+// =================================================================================================
 // Function: Is Attched
 // =================================================================================================
 int Volumes::is_attached( std::string t_instanceId, std::string t_volumeId, std::string t_device, 
                           int t_transactionId, Logger& logger){
-  logger.log("debug", "", "volsd", transactionId, "checking if volume is mounted");
-  //false
-  return 0;
+  logger.log("debug", "", "volsd", transactionId, "checking if volume is attached");
+  
+  std::string output;
+  
+  int res = utility::exec(output, "aws ec2 describe-volumes --volume-id " + t_volumeId + " --query \"Volumes[].Attachments[].[State, InstanceId, Device]\" --output text --region us-east-1 --output text" );
+
+  if (!res) {
+    logger.log("info", "", "volsd", t_transactionId, "failed to get volume status", "is_attach");
+    logger.log("debug", "", "volsd",t_transactionId, "AWS ERROR: " + output, "is_attached");
+  }
+
+  std::stringstream ss(output);
+  std::string device, instanceId, state;
+  ss >> state >> instanceId >> device;
+ 
+  // first, check the status
+  if (state.find("attached") != std::string::npos) {
+    if (instanceId.find(t_instanceId) == std::string::npos) {
+      logger.log("debug", "", "volsd", t_transactionId, "Volume is already attached Locally"); 
+      return 1;
+    } else {
+      logger.log("error", "", "volsd", t_transactionId, "Volume is attached in another instance, please use different volume", "is_attach");
+      return 0;
+    }
+  }else {
+      std::cout << " > volume status is available\n";
+      device = t_device.substr(t_device.find("/", 1)+1);
+      if (! attach(t_volumeId, device, t_instanceId, t_transactionId) ) {
+        return 0;
+        
+      }
+
+  }
+  
+  
+  return 1;
 }
 
 

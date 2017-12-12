@@ -158,21 +158,23 @@ int main ( int argc, char* argv[] ) {
   
   Sync sync( conf.SyncDatesFile, utility::to_string(conf.SyncVolumesInterval) );
   sync.set_logger_att ( _onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel );
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // 6. ensure that volumes are mounted
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  if ( !ensure_mounted(volumes, logger) ){
-    std::cout << "error: target filesystem " 
-              << conf.TargetFilesystemMountPoint 
-              << " is not mounted\n";
-    return 1;
-  }
  
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // 7. get the hostname and the Amazon Instance Id for this machine
+  // 6. get the hostname and the Amazon Instance Id for this machine
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   hostname    = utility::get_hostname();
   instance_id = utility::get_instance_id();
+
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // 7. ensure that volumes are mounted
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  if ( !ensure_mounted(volumes, logger) ){
+    std::cout << "error: target filesystem "
+              << conf.TargetFilesystemMountPoint
+              << " is not mounted\n";
+    return 1;
+  }
+
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // 8. Populating ports array. 
