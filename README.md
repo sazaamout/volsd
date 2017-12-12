@@ -71,6 +71,7 @@ The system consist of the following components:
     
 
 # Future work #
+  - Setup volsd to use pull updat rather than push update to the clients.
   - Testing it on other linux operating systems
   - Use Amazon s3 object to store volumes and snapshots information rather than storing in the local disk.
   - Volsd syncs the volumes by pushing changes. It would be more better if clients servers pull these changes from volsd's server. This way, volsd server can focus on doing other tasks
