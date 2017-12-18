@@ -92,8 +92,8 @@ int main ( int argc, char* argv[] )
     std::string reply;
     try {
       std::cout << "Connecting to Port 90000\n"; 
-      logger.log("info", "", "volsd-client", 0, "requesting communication port from server.");
-      ClientSocket client_socket ( "10.2.1.147", 9000 );
+      logger.log("info", "", "volsd-client", 0, "requesting communication port from server from 10.2.1.150");
+      ClientSocket client_socket ( "10.2.1.150", 9000 );
       std::string msg, ack;
 
       try {
@@ -113,11 +113,11 @@ int main ( int argc, char* argv[] )
     // 2) Connect to the port and start reciving
     // ----------------------------------------------
     try {
-      logger.log("info", "", "volsd-client", 0, "connecting to server via communication port:[" + 
+      logger.log("info", "", "volsd-client", 0, "connecting to server [10.2.1.150] via communication port:[" + 
                  reply + "]");
 
       sleep(2);
-      ClientSocket client_socket ( "10.2.1.147", utility::to_int(reply) );
+      ClientSocket client_socket ( "10.2.1.150", utility::to_int(reply) );
       
       std::string msg, ack;
       
