@@ -491,7 +491,7 @@ int main ( int argc, char* argv[] ) {
       logger.log("info", "", "volsd", transId, "ACK recived from client: [OK]", "VA" );      
 
       // update volume information
-      if ( !volumes.update(volumeId, "status", "used", transId, ip, mountpoint ,"") ) {
+      if ( !volumes.update(volumeId, "status", "used", transId, ip, mountpoint ,"none") ) {
         logger.log("info", "", "volsd", transId, "failed to update volumes status","VA");
       }
       
