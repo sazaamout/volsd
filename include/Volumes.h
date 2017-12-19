@@ -67,7 +67,8 @@ class Volumes
     
     // m_volumes modifiers function
     int update ( const std::string volumeId, const std::string key, const std::string value , 
-                 const int transactionId, std::string t_ip = "", std::string t_remoteMountPoint = "");
+                 const int transactionId, std::string t_ip = "", std::string t_remoteMountPoint = "", 
+                 std::string t_device = "" );
                  
     int remove ( const std::string t_volumeId, const int t_transactionId );
     int add ( const utility::Volume t_volumes, const int t_transactionId );

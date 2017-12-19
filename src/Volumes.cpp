@@ -454,7 +454,7 @@ int Volumes::add ( const utility::Volume t_volumes, const int t_transactionId ){
 // =================================================================================================
 int Volumes::update ( const std::string t_volumeId, const std::string t_key, 
                       const std::string t_value,    const int t_transactionId, 
-                      std::string t_ip, std::string t_remoteMountPoint){
+                      std::string t_ip, std::string t_remoteMountPoint, std::string t_device ){
 
   // 1. find the volume record
   bool found = false;
@@ -482,6 +482,9 @@ int Volumes::update ( const std::string t_volumeId, const std::string t_key,
     
     if ( t_remoteMountPoint != "" ) {
       m_volumes[i].mountPoint = t_remoteMountPoint;
+    }
+    if ( t_device != "" ) {
+      m_volumes[i].device = t_device;
     }
   } 
   

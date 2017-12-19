@@ -490,8 +490,8 @@ int main ( int argc, char* argv[] ) {
     if ( status == "OK"){
       logger.log("info", "", "volsd", transId, "ACK recived from client: [OK]", "VA" );      
 
-      //label disk as used
-      if ( !volumes.update(volumeId, "status", "used", transId, ip, mountpoint) ) {
+      // update volume information
+      if ( !volumes.update(volumeId, "status", "used", transId, ip, mountpoint ,"") ) {
         logger.log("info", "", "volsd", transId, "failed to update volumes status","VA");
       }
       
