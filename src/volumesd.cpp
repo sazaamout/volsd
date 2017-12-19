@@ -202,7 +202,7 @@ int main ( int argc, char* argv[] ) {
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // 1. maintain snapshots
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    if ( ( snapshots.size() <  conf.SnapshotMaxNumber ) || (!snapshotsOpPending) ) {
+    if ( ( snapshots.size() <  conf.SnapshotMaxNumber ) && (!snapshotsOpPending) ) {
       // check the time
       if ( snapshots.timeToSnapshot() ){
         snapshotsOpPending = 1;
@@ -216,13 +216,16 @@ int main ( int argc, char* argv[] ) {
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     value = volumes.get_idle_number() + inProgressVolumes;
     if ( value < conf.MaxIdleDisk ){
-      int tranId = utility::get_transaction_id();
-      logger.log( "debug", "", "volsd", tranId, "creating a new volume" );  
-      std::thread creatDisk_thread( createDisk_handler, 
-                                    std::ref(snapshots), 
-                                    std::ref(volumes), 
-                                    tranId );
-      creatDisk_thread.detach();
+      // if a snapshot is being create, wait for it to finish
+      if ( ! snapshotsOpPending ) {
+        int tranId = utility::get_transaction_id();
+        logger.log( "debug", "", "volsd", tranId, "creating a new volume" );
+        std::thread creatDisk_thread( createDisk_handler,
+                                      std::ref(snapshots),
+                                      std::ref(volumes),
+                                      tranId );
+        creatDisk_thread.detach();
+      }
     }
     
     if ( value > conf.MaxIdleDisk ){
@@ -603,7 +606,7 @@ int main ( int argc, char* argv[] ) {
     
     Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
 
-    
+
     // umount, detach, remove mountpoint    
     std::string volumeId;
     int res = volumes.release( volumeId, t_transactionId );
@@ -870,7 +873,7 @@ int main ( int argc, char* argv[] ) {
     }
   }
   
-    // -------------------------------------------------------------------
+  // -------------------------------------------------------------------
   // Ensure Mounted Function
   // -------------------------------------------------------------------
   int ensure_mounted(Volumes &volumes, Logger &logger){
