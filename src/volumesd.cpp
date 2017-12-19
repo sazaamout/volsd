@@ -45,6 +45,7 @@
   int diskReleaseOpPending = 0;
   int snapshotsOpPending   = 0;
   int syncingOpPending     = 0;
+  int syncingPathOpPending = 0;
   
   ServerSocket *server;
   
@@ -61,17 +62,19 @@
   // thread related functions
   void volumesDispatcher_handler( Volumes &volumes, Snapshots& snapshots, Sync& sync );
   void clientDiskAquire_handler(int portNo, std::string request, std::string ip, Volumes &volumes, 
-                                int transId);
+                                int transId );
   void clientDiskRelease_handler( Volumes &volumes, const std::string t_volumeId, 
                                   const int t_transactionId );
-  void createDisk_handler(Snapshots& s, Volumes& volumes, const int t_transactionId);
-  void removeDisk_handler(Snapshots& s, Volumes& volumes, const int t_transactionId);
+  void createDisk_handler(Snapshots& s, Volumes& volumes, const int t_transactionId );
+  void removeDisk_handler(Snapshots& s, Volumes& volumes, const int t_transactionId );
   
   void createSnapshot_handler( Snapshots& snapshots );
   void removeSnapshot_handler( Snapshots& snapshots );
   
-  void volumesSync_handler( Snapshots& s, Volumes& volumes, Sync& sync);
+  void volumesSync_handler( Snapshots& s, Volumes& volumes, Sync& sync );
+  void volumesSyncPath_handler ( Snapshots& s, Volumes& volumes, Sync& sync );
   //void SyncRequests_handler( Volumes &volumes );
+
   
   void signalHandler( int signum );
   
@@ -362,6 +365,24 @@ int main ( int argc, char* argv[] ) {
               volumesSync_thread.detach();  
               new_sock.close_socket();
               break;
+            } else if ( request.find("SyncPath") != std::string::npos ) {
+
+              logger.log("info", "", "volsd", transId, "request:[" + request + "] from client:[" +
+                         cip + "]", "VD");
+               
+              // start a new thread which will listen on the port sent to the client.
+              // this thread will handle the disk request
+              syncingPathOpPending = 1;
+
+              std::thread volumesSyncPath_thread( volumesSyncPath_handler,
+                                              std::ref(snapshots),
+                                              std::ref(volumes),
+                                              std::ref(sync));
+              volumesSyncPath_thread.detach();
+              new_sock.close_socket();
+
+              break;
+
             } else {
               
               msg = "unknown request, shutting down connection\n";
@@ -649,79 +670,33 @@ int main ( int argc, char* argv[] ) {
   // -------------------------------------------------------------------
   // Sync Request Handler Function
   // -------------------------------------------------------------------
-  /* THIS IS GOING TO BE IMPLEMENTED NEXT VERSION
-  void SyncRequests_handler( Volumes &volumes ){
-    
-    std::string request, ack, cip;
-    std::string msg;
-    int transId;
-    
-    Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
-    logger.log("info", "", "volsd", 0, "Sync Requests started");
-      
-    try {
-      ServerSocket server( 8000 ); 
+  /* WE NEED TO SET IT IP TO RETURN FEED BACK */
 
-      while (( true ) && ( !sigterm ))
-      {
-        
-        transId = utility::get_transaction_id();
-        logger.log("debug", "", "volsd", 0, "waiting for requests from clients ...", "SyncThread");
-        ServerSocket new_sock;
-        
-        // Accept the incoming connection
-        server.accept ( new_sock );
+  void volumesSyncPath_handler ( Snapshots& s, Volumes& volumes , Sync& sync ) {
 
-        // client Ip address      
-        cip = server.client_ip();
+   Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
 
-        
-        
-        try {
-          while ( true ) 
-          {
-            
-            // reads client request
-            new_sock >> request;
-            utility::clean_string(request);
 
-            if ( request.compare("SyncAll") == 0 ) {
-              
-              // the reply to the client will be a communication port. The new port is used as
-              // communication channel between the dispatcher and the client.
-              logger.log("info", "", "volsd", transId, "request:[" + request + "] from client:[" + 
-                         cip + "]", "SyncThread");
-              new_sock << "OK";
+    logger.log( "info", "", "volsd", 4, "Syncing Path" , "VSP" );
+    // get a reference to the volumes list. We are using a referece rather than getting a copy for
+    // the list simply because the list get updated all the time, and sync is a lengthy operation.
+    // A problem will arrise when a volumes got removed from the list and the synchronizer goes and
+    // sync it
+    std::vector<utility::Volume> v = volumes.get_list();
+    //for(std::vector<utility::Volume>::iterator it = v.begin(); it != v.end(); ++it) {
+    //  if ( it->attachedTo == "localhost" ) {
+    //    sync.synchronize( conf.TargetFilesystemMountPoint, it->mountPoint, 4, 1 );
+    //  } else {
+    //    sync.synchronize( conf.TargetFilesystemMountPoint, it->attachedTo + ":" + it->mountPoint, 4, 0 );
+    //  }
+    //}
 
-              new_sock.close_socket();
-              // start a new thread which will listen on the port sent to the client. 
-              // this thread will handle the disk request
-              syncingOpPending = 1;
-              std::thread volumesSync_thread( volumesSync_handler, std::ref(snapshots), 
-                                        std::ref(volumes),   std::ref(sync));
-              volumesSync_thread.detach();  
-        
 
-            } else {
-              msg = "unknown request, shutting down connection\n";
-              logger.log("error", "", "volsd", transId, "unknown request:[" + request + 
-                         "], shutting down connection", "SyncThread");
-              new_sock << msg;
-              new_sock.close_socket();
-              break;
-            }
-          } // end while
-        } catch ( SocketException& e) {
-          logger.log("error", "", "volsd", transId, "Exception was caught: " + e.description(), "SyncThread");
-        }
-      } // end of outer while
-    } catch ( SocketException& e ) {
-      logger.log("error", "", "volsd", transId, "Exception was caught: " + e.description(), "SyncThread");
-    }
-    
+    syncingPathOpPending = 0;
+ 
     return;
   }
-  */
+  
   
   // -------------------------------------------------------------------
   // Signal Handler Function 

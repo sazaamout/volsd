@@ -24,6 +24,8 @@ bool diskAcquireRequest = false;
 bool diskReleaseRequest = false;
 bool _onscreen          = false;
 std::string  mountPoint;
+std::string  serverIP;
+std::string  serverPort;
 int _loglevel = 3;
 
 // -----------------------------------------------------------------------------
@@ -57,15 +59,12 @@ int main ( int argc, char* argv[] )
   volumes.set_logger_att ( _onscreen, "/var/log/messages", _loglevel );
 
   if ( diskAcquireRequest ) {
-    std::cout << "diskAcquire\n";
-
     if (!disk_acquire(volumes)){
       return 1; // exit with error
     }
   }
   
   if ( diskReleaseRequest ){
-    std::cout << "diskRelease\n";
     if (!disk_release(volumes)){
       return 1; // exit with error
     }
@@ -91,9 +90,8 @@ int main ( int argc, char* argv[] )
     
     std::string reply;
     try {
-      std::cout << "Connecting to Port 90000\n"; 
-      logger.log("info", "", "volsd-client", 0, "requesting communication port from server from 10.2.1.150");
-      ClientSocket client_socket ( "10.2.1.150", 9000 );
+      logger.log("info", "", "volsd-client", 0, "requesting communication port from server from " + serverIP + ":" + serverPort);
+      ClientSocket client_socket ( serverIP, utility::to_int(serverPort) );
       std::string msg, ack;
 
       try {
@@ -113,11 +111,11 @@ int main ( int argc, char* argv[] )
     // 2) Connect to the port and start reciving
     // ----------------------------------------------
     try {
-      logger.log("info", "", "volsd-client", 0, "connecting to server [10.2.1.150] via communication port:[" + 
+      logger.log("info", "", "volsd-client", 0, "connecting to server " + serverIP + " via communication port:[" + 
                  reply + "]");
 
       sleep(2);
-      ClientSocket client_socket ( "10.2.1.150", utility::to_int(reply) );
+      ClientSocket client_socket ( serverIP, utility::to_int(reply) );
       
       std::string msg, ack;
       
@@ -302,13 +300,15 @@ int main ( int argc, char* argv[] )
     int c;
     opterr = 0;
 
-    while ((c = getopt (argc, argv, "a:r:shv")) != -1) 
+    while ((c = getopt (argc, argv, "a:r:c:p:shv")) != -1) 
       switch (c) {   
         case 'h':
-          printf("%s: [options]\n", argv[0]);
+          printf("%s: -c x.x.x.x -p xxxx [options]\n", argv[0]);
           printf(" options:\n");
           printf("   -a  aquire a disk\n");
           printf("   -r  release a disk\n");
+          printf("   -c  volsd's server IP address\n");
+          printf("   -P  volsd's server port\n");
           printf("   -s  print logs to screen\n");
           printf("   -h  print this help menu\n");
           printf("   -v  version number\n");
@@ -318,22 +318,40 @@ int main ( int argc, char* argv[] )
                   CLIENT_MAJOR_VERSION, CLIENT_MINOR_VERSION, CLIENT_PATCH_VERSION
           );
           exit (0);
+
         case 's':
           _onscreen = true;
            break;
+
         case 'a':
           diskAcquireRequest = true;
           mountPoint = optarg;
           break;
+
         case 'r':
           diskReleaseRequest = true;
           mountPoint = optarg;
           break;
+
+        case 'c':
+          serverIP = optarg;
+          break;
+        
+        case 'p':
+          serverPort = optarg;
+          break;
+
         case '?':
           if (optopt == 'a'){
             fprintf (stderr, "Option -%c requires an argument.\n", optopt);
             fprintf (stderr, "use -h for help.\n");
           }else if (optopt == 'r'){
+            fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+            fprintf (stderr, "use -h for help.\n");
+          }else if (optopt == 'c'){
+            fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+            fprintf (stderr, "use -h for help.\n");
+          }else if (optopt == 'p'){
             fprintf (stderr, "Option -%c requires an argument.\n", optopt);
             fprintf (stderr, "use -h for help.\n");
           }else if (isprint (optopt)){
@@ -353,4 +371,18 @@ int main ( int argc, char* argv[] )
       fprintf (stderr, "use -h for help.\n");
       exit(1);
     }
-  }
+
+    if ( serverIP.empty() ){
+      printf("must specify volsd server IP address. Use -h for more information\n");
+      exit(1);
+    }
+    if ( serverPort.empty() ){
+      printf("must specify volsd server port. Use -h for more information\n");
+      exit(1);
+    }
+    if ( ( ! diskAcquireRequest ) && ( ! diskReleaseRequest ) ) {
+      printf("must specify operation. Use -h for more information\n");
+      exit(1);
+   }
+
+ }
