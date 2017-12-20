@@ -201,7 +201,7 @@ int main ( int argc, char* argv[] ) {
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // 1. maintain snapshots
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    if ( ( snapshots.size() <  conf.SnapshotMaxNumber ) && (!snapshotsOpPending) ) {
+    if ( ( snapshots.size() <  conf.SnapshotMaxNumber ) || (!snapshotsOpPending) ) {
       // check the time
       if ( snapshots.timeToSnapshot() ){
         snapshotsOpPending = 1;

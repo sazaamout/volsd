@@ -559,7 +559,6 @@ namespace utility
     // if directory ends with '\', remove it
     if ( dir[dir.length()-1] == '/' )
       dir = dir.substr(0, dir.length()-1);
-    printf("CHECK: %s\n", dir.c_str());
 
     FILE * mtab = NULL;
     struct mntent * part = NULL;

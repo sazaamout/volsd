@@ -658,18 +658,17 @@ int Volumes::release_volume( std::string& v, std::string t_instanceId, std::stri
   logger->log("info", "", "volsd", t_transactionId, "detaching volume");
   if ( !detach( vol, transactionId ) ) {
     logger->log("info", "", "volsd", t_transactionId, "failed to detach volume");
-    return 0;
+    //return 0;
   } else {
     logger->log("info", "", "volsd", t_transactionId, "detaching was successful");
+    // now delete the volume
+    logger->log("info", "", "volsd", t_transactionId, "removing volume from Amazon space");
+    if (!del( vol, t_transactionId )){
+      logger->log("error", "", "volsd", t_transactionId, "volume failed to be removed");
+      return 0;
+    }
+    logger->log("info", "", "volsd", t_transactionId, "volume was deleted from Amazon space");
   }
-  // now delete the volume
-  logger->log("info", "", "volsd", t_transactionId, "removing volume from Amazon space");		  
-  if (!del( vol, t_transactionId )){
-    logger->log("error", "", "volsd", t_transactionId, "volume failed to be removed");		  
-    return 0;
-  } 
-  logger->log("info", "", "volsd", t_transactionId, "volume was deleted from Amazon space");		 
-      
       
   v = vol;
   return 1;

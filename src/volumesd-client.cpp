@@ -266,7 +266,7 @@ int main ( int argc, char* argv[] )
       }
       
       logger.log("info", "", "volsd-client", 0, "sends volume release request to server");
-      ClientSocket client_socket ( "10.2.1.147", 9000 );                       
+      ClientSocket client_socket ( serverIP, utility::to_int(serverPort) );                       
                              
       std::string request = "DiskRelease:" + volume;
     
