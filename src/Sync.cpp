@@ -160,17 +160,15 @@ int Sync::synchronize ( const std::string t_source,
     // ------------------------------------------
     std::string  rsyncCmd;
     if (local){
-      rsyncCmd = "rsync -alpti --delete " + 
+      rsyncCmd = "rsync -alpti --delete --exclude \"BKU/\" --exclude \"logs/*\" --delete --exclude \'*~\' --delete --exclude \"devl/\" --exclude \".git/\" --delete --exclude \"files/\" --delete --exclude  \"reports/\" --exclude \".svn/\" " +
                   source + " " + 
                   destination + 
                   " | awk '{ print $2 }'";
-      std::cout << "\n" << rsyncCmd << "\n";
     }else {
-      rsyncCmd = "rsync -alptie \"ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no\" --delete --rsync-path=\"[ ! -d " + destination + " ] && mkdir " + destination + ";  rsync\" " + 
+      rsyncCmd = "rsync -alptie \"ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no\" --delete --rsync-path=\"[ ! -d " + destination + " ] && mkdir " + destination + ";  rsync\" --exclude \"BKU/\" --exclude \"logs/*\" --delete --exclude \'*~\' --delete --exclude \"devl/\" --exclude \".git/\" --delete --exclude \"files/\" --delete --exclude  \"reports/\" --exclude \".svn/\" " +
                  source + " " +
                  ip + ":" + destination +
                  " | awk '{ print $2 }'";
-      std::cout << "\n" << rsyncCmd << "\n";
     }
     
     // ------------------------------------------
