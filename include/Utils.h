@@ -117,7 +117,7 @@ namespace utility
   bool folder_remove( const std::string dirname);
   bool mountfs ( std::string &output, std::string mountPoint, std::string device );
   bool umountfs( std::string &output, std::string mountPoint );
-  bool is_mounted( const std::string dir);
+  bool is_mounted( const std::string t_dir);
   
 	int send_email(std::string title, std::string message, std::string to);
 	std::string rsync_errorCodetoString(int errorCode);

@@ -210,15 +210,19 @@ namespace utility
         conf.Hostname = value;
       }else if (key == "MaxIdleDisk") 
         conf.MaxIdleDisk = utility::to_int(value);
-      else if ( key == "TargetFilesystemMountPoint" )
+      else if ( key == "TargetFilesystemMountPoint" ){
+        if ( value[value.length()-1] != '/' )
+          value = value + '/';
         conf.TargetFilesystemMountPoint = value;
-      else if (key == "TargetFilesystemDevice" ) 
+      }else if (key == "TargetFilesystemDevice" ) 
         conf.TargetFilesystemDevice = value;
       else if (key == "TargetFilesystem" ) 
         conf.TargetFilesystem = value;
-      else if ( key == "TempMountPoint" ) 
+      else if ( key == "TempMountPoint" ) {
+        if ( value[value.length()-1] != '/' )
+          value = value + '/';
         conf.TempMountPoint = value;
-      else if ( key == "SnapshotFrequency" ) 
+      }else if ( key == "SnapshotFrequency" ) 
         conf.SnapshotFrequency = utility::to_int(value);
       else if ( key == "SnapshotFile" ) 
         conf.SnapshotFile = value;
@@ -238,7 +242,6 @@ namespace utility
         conf.DispatcherLoglevel = utility::to_int(value);
       else if ( key == "ClientLoglevel" ) 
         conf.ClientLoglevel = utility::to_int(value);
-      
       else if ( key == "SyncVolumes" ) 
         conf.SyncVolumes = value;
       else if ( key == "SyncVolumesInterval" ) 
@@ -271,9 +274,11 @@ namespace utility
         conf.EmailPushError = value;
       else if ( key == "EmailPushEmail" ) 
         conf.EmailPushEmail = value;
-      else if ( key == "RemoteMountPoint" ) 
+      else if ( key == "RemoteMountPoint" ){
+        if ( value[value.length()-1] != '/' )
+          value = value + '/';
         conf.RemoteMountPoint = value;
-      else 
+      }else 
         continue;
 
       line="";
@@ -548,8 +553,14 @@ namespace utility
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // is mounted FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  bool is_mounted( const std::string dir){
-	  
+  bool is_mounted( const std::string t_dir){
+    std::string dir = t_dir;
+
+    // if directory ends with '\', remove it
+    if ( dir[dir.length()-1] == '/' )
+      dir = dir.substr(0, dir.length()-1);
+    printf("CHECK: %s\n", dir.c_str());
+
     FILE * mtab = NULL;
     struct mntent * part = NULL;
     int is_mounted = 0;

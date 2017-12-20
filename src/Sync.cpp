@@ -74,63 +74,127 @@ int Sync::synchronize ( const std::string t_source,
 }
 
 
-int Sync::synchronize ( const std::string t_source, 
-                        const std::string t_destination, 
-                        const int t_transId, 
-                        const int local
-                      ) {
+  int Sync::synchronize ( const std::string t_source, const std::string t_destination, 
+                          const int t_transId, const int local, const std::string op ) {
        
-  std::string source, destination;
-  source = t_source;
-  destination = t_destination;
-   
-  // check if path exist
-  if (( !utility::is_dir( destination.c_str() ) ) && (local) ) {
-    logger->log("error", "", "volsd", t_transId, "path:[" +  destination + "] does not exist");
-    return 0;
-  } 
-    
-  // check if t_source and t_destination ends with / 
-  if ( source[ source.length() - 1 ] != '/') {
-    source.append("/");
-  }
-  if ( destination[ destination.length() - 1 ] != '/') {
-    destination.append("/");
-  }
-  
-  std::string  rsyncCmd;
-  if (local){
-    rsyncCmd = "rsync -alpti --delete " + 
-                source + " " + 
-                destination + 
-                " | awk '{ print $2 }'";
-  }else {
-    rsyncCmd = "rsync -alptie \"ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no\" --delete " +
-               source + " " +
-               destination +
-               " | awk '{ print $2 }'";
+    std::string source, destination, ip;
+    source = t_source;
+    destination = t_destination;
 
-  }
+    // ------------------------------------------
+    // 1. Select operation
+    // ------------------------------------------
+    if ( op == "SyncAll" ) {
+      // check if path exist on the local idle disks, no need to do it for the remote since it is mounted
+      // and we know it is there
+      if (( ! utility::is_exist( destination.c_str() ) ) && (local) ) {
+        logger->log("error", "", "volsd", t_transId, "path:[" +  destination + "] does not exist");
+        return 0;
+      }
 
-  std::string output;
-  std::stringstream output_ss, error_ss;
-  int res = utility::exec( output, rsyncCmd );
-    
-  if (!res){
-    // an error occure
-    utility::clean_string(output);
-    logger->log("info", "", "volsd", t_transId, "RSYNC: [" + destination + "] with:[" + source + "] failed ");      
-    logger->log("info", "", "volsd", t_transId, "RSYNC ERROR: [" + output + "]"); 
-    
-  } else {
-    // successful, show sync output
-    logger->log("info", "", "volsd", t_transId, "RSYNC: [" + destination + "] with:[" + source + "] successful ");  
-    if ( output != "" )
-      logger->log("info", "", "volsd", t_transId, output); 
-  }
+      if (!local) {
+        ip = destination.substr(0, destination.find(":"));
+        destination = destination.substr(destination.find(":")+1);
+      }
+ 
+      // check if t_source and t_destination ends with /
+      if ( source[ source.length() - 1 ] != '/') {
+        source.append("/");
+      }
+      if ( destination[ destination.length() - 1 ] != '/') {
+        destination.append("/");
+      }
 
-  return 1;
-}
+    } else if ( op == "SyncPath" ){
+
+      // ~~~~~~~~~~~~~~~~~~~~~
+      // check if source exist
+      // ~~~~~~~~~~~~~~~~~~~~~
+      if ( !utility::is_exist( source ) ){
+        logger->log("error", "", "volsd", t_transId, "path:[" + source + "] does not exist");
+        return 0;
+      }
+      
+      if (!local) {
+        ip = destination.substr(0, destination.find(":"));
+        destination = destination.substr(destination.find(":")+1);
+      }
+
+      // ~~~~~~~~~~~~~~~~~~~~~
+      // If Directory Do...
+      // ~~~~~~~~~~~~~~~~~~~~~
+      if ( utility::is_dir( source.c_str() ) ){
+        // append the trailing '/' to both of them
+        if ( source[ source.length() - 1 ] != '/') {
+          source.append("/");
+        }
+        if ( destination[ destination.length() - 1 ] != '/') {
+          destination.append("/");
+        }
+      }
+
+      // ~~~~~~~~~~~~~~~~~~~~~
+      // If File Do ...
+      // ~~~~~~~~~~~~~~~~~~~~~
+      if ( utility::is_file( source.c_str() ) ){
+        // remove trailing '/' from source
+        if ( source[ source.length() - 1 ] == '/') {
+          source = source.substr(0, source.length()-1);
+        }
+        // remove the filename from the destination
+        // example: rsync -alvpt /home/cde/file.txt /home/cde
+        destination = destination.substr(0, destination.find_last_of("/"));
+      }
+    
+
+    } else {
+        logger->log("error", "", "volsd", t_transId, "unknown transaction");
+        return 0;
+
+    }
+
+
+    logger->log("info", "", "volsd", t_transId, "Syncing From:[" + source + "] To:[" + destination + "]" );
+    // ------------------------------------------
+    // 2. do the rsync
+    // ------------------------------------------
+    std::string  rsyncCmd;
+    if (local){
+      rsyncCmd = "rsync -alpti --delete " + 
+                  source + " " + 
+                  destination + 
+                  " | awk '{ print $2 }'";
+      std::cout << "\n" << rsyncCmd << "\n";
+    }else {
+      rsyncCmd = "rsync -alptie \"ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no\" --delete --rsync-path=\"[ ! -d " + destination + " ] && mkdir " + destination + ";  rsync\" " + 
+                 source + " " +
+                 ip + ":" + destination +
+                 " | awk '{ print $2 }'";
+      std::cout << "\n" << rsyncCmd << "\n";
+    }
+    
+    // ------------------------------------------
+    // 3. catch the output
+    // ------------------------------------------
+    std::string output;
+    std::stringstream output_ss, error_ss;
+    int res = utility::exec( output, rsyncCmd );
+    
+    if (!res){
+      // an error occure
+      utility::clean_string(output);
+      logger->log("info", "", "volsd", t_transId, "RSYNC: [" + destination + "] with:[" + source + "] failed ");      
+      logger->log("info", "", "volsd", t_transId, "RSYNC ERROR: [" + output + "]"); 
+    
+    } else {
+      // successful, show sync output
+      logger->log("info", "", "volsd", t_transId, "RSYNC: [" + destination + "] with:[" + source + "] successful ");  
+      if ( output != "" )
+        logger->log("info", "", "volsd", t_transId, output); 
+    }
+
+    return 1;
+  }
 
 
   // -----------------------------------------------------------------------------------------------

@@ -72,8 +72,7 @@
   void removeSnapshot_handler( Snapshots& snapshots );
   
   void volumesSync_handler( Snapshots& s, Volumes& volumes, Sync& sync );
-  void volumesSyncPath_handler ( Snapshots& s, Volumes& volumes, Sync& sync );
-  //void SyncRequests_handler( Volumes &volumes );
+  void volumesSyncPath_handler ( std::string request, Snapshots& s, Volumes& volumes, Sync& sync );
 
   
   void signalHandler( int signum );
@@ -376,11 +375,12 @@ int main ( int argc, char* argv[] ) {
               // start a new thread which will listen on the port sent to the client.
               // this thread will handle the disk request
               syncingPathOpPending = 1;
-
+              
               std::thread volumesSyncPath_thread( volumesSyncPath_handler,
-                                              std::ref(snapshots),
-                                              std::ref(volumes),
-                                              std::ref(sync));
+                                                  request,
+                                                  std::ref(snapshots),
+                                                  std::ref(volumes),
+                                                  std::ref(sync));
               volumesSyncPath_thread.detach();
               new_sock.close_socket();
 
@@ -659,9 +659,9 @@ int main ( int argc, char* argv[] ) {
     std::vector<utility::Volume> v = volumes.get_list();
     for(std::vector<utility::Volume>::iterator it = v.begin(); it != v.end(); ++it) {
       if ( it->attachedTo == "localhost" ) {
-        sync.synchronize( conf.TargetFilesystemMountPoint, it->mountPoint, 4, 1 );  
+        sync.synchronize( conf.TargetFilesystemMountPoint, it->mountPoint, 4, 1, "SyncAll");  
       } else {
-        sync.synchronize( conf.TargetFilesystemMountPoint, it->attachedTo + ":" + it->mountPoint, 4, 0 );  
+        sync.synchronize( conf.TargetFilesystemMountPoint, it->attachedTo + ":" + it->mountPoint, 4, 0, "SyncAll" );  
       }
     }
     
@@ -675,24 +675,39 @@ int main ( int argc, char* argv[] ) {
   // -------------------------------------------------------------------
   /* WE NEED TO SET IT IP TO RETURN FEED BACK */
 
-  void volumesSyncPath_handler ( Snapshots& s, Volumes& volumes , Sync& sync ) {
+  void volumesSyncPath_handler ( std::string request, Snapshots& s, Volumes& volumes , Sync& sync ) {
 
-   Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
+    Logger logger(_onscreen, conf.DispatcherLogPrefix + "dispatcher.log", _loglevel);
+  
+    std::string path  = request.substr( request.find(" ")+1 );
 
+    size_t pos = path.find(conf.RemoteMountPoint);
+    if (pos==std::string::npos) {
+      logger.log( "info", "", "volsd", 4, "something is not right, skipping SyncPath" , "VSP" );
+      syncingPathOpPending = 0;
+      return;
+    }
 
-    logger.log( "info", "", "volsd", 4, "Syncing Path" , "VSP" );
+    std::string rPath = path.substr ( pos+conf.RemoteMountPoint.length() );
+
     // get a reference to the volumes list. We are using a referece rather than getting a copy for
     // the list simply because the list get updated all the time, and sync is a lengthy operation.
     // A problem will arrise when a volumes got removed from the list and the synchronizer goes and
     // sync it
+    std::string source, destination;
+    source = conf.TargetFilesystemMountPoint + rPath;
+
     std::vector<utility::Volume> v = volumes.get_list();
-    //for(std::vector<utility::Volume>::iterator it = v.begin(); it != v.end(); ++it) {
-    //  if ( it->attachedTo == "localhost" ) {
-    //    sync.synchronize( conf.TargetFilesystemMountPoint, it->mountPoint, 4, 1 );
-    //  } else {
-    //    sync.synchronize( conf.TargetFilesystemMountPoint, it->attachedTo + ":" + it->mountPoint, 4, 0 );
-    //  }
-    //}
+
+    for(std::vector<utility::Volume>::iterator it = v.begin(); it != v.end(); ++it) {
+      if ( it->attachedTo == "localhost" ) {
+        destination = it->mountPoint + "/" +rPath;
+        sync.synchronize( source, destination, 4, 1, "SyncPath");
+      } else {
+        destination = it->attachedTo + ":" + it->mountPoint + "/" + rPath;
+        sync.synchronize( source, destination, 4, 0 , "SyncPath");
+      }
+    }
 
 
     syncingPathOpPending = 0;
