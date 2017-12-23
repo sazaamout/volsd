@@ -15,6 +15,4 @@
 #define CLIENT_PATCH_VERSION @CLIENT_PATCH_VERSION@
 
 #define DISPATCHER_CONF_FILE "@CFG_INSTALL_DIR@/dispatcher.cfg"
-#define MANAGER_CONF_FILE    "@CFG_INSTALL_DIR@/manager.cfg"
-#define SYNC_CONF_FILE       "@CFG_INSTALL_DIR@/sync.cfg"
-#define CLIENT_CONF_FILE     "@CFG_INSTALL_DIR@/client.cfg"
+#define CLIENT_CONF_FILE     "@CFG_INSTALL_DIR@/volsd-client.conf"

@@ -212,6 +212,12 @@ int Volumes::mount( const std::string t_volumeId, const std::string t_mountPoint
     return 0;
   }
   
+  // use the new mount
+  //if ( !utility::mountfs( output, "/dev/"+t_device, t_mountPoint, "ext3", mp_flags, 0 ) ){
+	//  logger->log("error", "", "volsd", t_transactionId, "failed to mount volume. " + output, "mount");
+  //  return 0;
+  //}
+  
   return 1;
 }
 

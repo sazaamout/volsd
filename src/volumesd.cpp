@@ -116,7 +116,7 @@ int main ( int argc, char* argv[] ) {
     std::cout << "error: cannot locate configuration file\n";
     return 1;
   }
-  
+   
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // 3 overwirte defaults
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

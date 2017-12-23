@@ -183,6 +183,73 @@ namespace utility
     std::cout << "=========================================================\n\n";
   }
 
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // LOAD CONFIGURATIONS FUNCTION 
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  //
+  int load_configurations ( Configuration &conf, std::string conf_file ){
+    
+    std::fstream myFile;
+    myFile.open(conf_file.c_str());
+    if (!myFile.is_open()) 
+      return 0;
+
+    std::string line;
+    std::string key, value;
+    while (std::getline(myFile, line)) {
+
+      if ( (line[0] == '#') || (line[1] == '#') || (line[0] == '\n') || (line == "")){
+        continue;
+      }   
+
+      line  = trim(line);
+      // this will return the first space
+      size_t fpos = line.find(" ");
+      if ( fpos != std::string::npos ) {
+        key   = line.substr(0, fpos);
+        value = line.substr(fpos+1);
+      
+        key   = trim(key);
+        value = trim(value);
+
+        if ( key == "NFSMountFlags" ){
+          int mf; 
+          utility::convert_mount_flags(mf, value);
+          conf.NFSMountFlags = mf;
+        } else if ( key == "ServerIP" ){
+          conf.ServerIP = value;
+        } else if ( key == "ServerPort" ){
+          conf.ServerPort = utility::to_int(value);
+        } else if ( key == "LogLevel" ){
+          conf.LogLevel = utility::to_int(value);
+        } else if ( key == "LogFile" ){
+          conf.LogFile = value;
+        } else if ( key == "TargetFSMountPoint" ){
+          conf.TargetFSMountPoint = value;
+        } else if ( key == "TargetFSDevice" ){
+          conf.TargetFSDevice = value;
+        } else if ( key == "ForceMount" ){
+          conf.ForceMount = value;
+        } else if ( key == "Aws_Cmd" ){
+          conf.Aws_Cmd = value;
+        } else if ( key == "Aws_Region" ){
+          conf.Aws_Region = value;
+        } else if ( key == "Aws_ConfigFile" ){
+          conf.Aws_ConfigFile = value;
+        } else if ( key == "Aws_CredentialsFile" ){
+          conf.Aws_CredentialsFile = value;
+        } else {
+          continue;
+        }
+      }  
+
+      
+
+    }//~~End While Loop ~~//
+
+    return 1;
+  }
+
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // LOAD_CONFIGURATION FUNCTION
@@ -278,6 +345,11 @@ namespace utility
         if ( value[value.length()-1] != '/' )
           value = value + '/';
         conf.RemoteMountPoint = value;
+      }else if ( key == "NFSMountFlags" ){
+        value = trim(value);
+        std::vector<std::string> v = explode( value, ',' );
+        for (int i=0; i<v.size(); i++)
+          std::cout << v[i] << '\n';
       }else 
         continue;
 
@@ -533,7 +605,26 @@ namespace utility
     return true;
   }
   
- 
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // MOUNT FUNCTION
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  bool mountfs( std::string& error,  const char* t_src, const char* t_target, 
+                const char* t_fsType, const unsigned long t_mntflags, 
+                const char* t_opts ){
+    
+    int result = mount(t_src, t_target, t_fsType, t_mntflags, t_opts);
+
+    if (result == 0) {
+      return true;
+    } else {
+      error = strerror(errno);
+      return false;
+    }   
+
+    return true;
+  }
+
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // MOUNT FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -631,8 +722,103 @@ namespace utility
     clean_string(output);
     return output;
   }
+
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // EXPLODE FUNCTION 
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  std::vector<std::string> explode( const std::string& str, const char token ){
+
+    std::vector<std::string> v; 
+    std::string substring;
+    std::istringstream ss(str);
+
+    while(std::getline(ss, substring, token)) {
+      v.push_back(substring);
+    }   
+
+    return v; 
+
+  }
+
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // TRIM FUNCTION
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Clean white spaces only from fornt and end of a given string
+  std::string trim(std::string const& str)
+  {
+    if(str.empty())
+      return str;
+
+    std::size_t firstScan = str.find_first_not_of(' ');
+    std::size_t first     = firstScan == std::string::npos ? str.length() : firstScan;
+    std::size_t last      = str.find_last_not_of(' ');
   
-  
+    return str.substr(first, last-first+1);
+  } 
+
+ 
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // CONVERT MOUNT FLAGS
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  int convert_mount_flags ( int& res, const std::string& t_mountflags) {
+    
+    // string is comma separated, put it in to vector
+    std::vector<std::string> v = explode(t_mountflags, ',');
+    res = 0;
+    for ( int i=0; i< v.size(); i++ ){
+      if ( v[i] == "MS_REMOUNT" ){
+        res = res | MS_REMOUNT;
+      }else if ( v[i] == "MS_BIND" ){
+        res = res | MS_BIND;
+      }else if ( v[i] == "MS_SHARED" ){
+        res = res | MS_SHARED;
+      }else if ( v[i] == "MS_PRIVATE" ){
+        res = res | MS_PRIVATE;
+      }else if ( v[i] == "MS_SLAVE" ){
+        res = res | MS_SLAVE;
+      }else if ( v[i] == "MS_UNBINDABLE" ){
+        res = res | MS_UNBINDABLE;
+      }else if ( v[i] == "MS_MOVE" ){
+        res = res | MS_MOVE;
+      }else if ( v[i] == "MS_DIRSYNC" ){
+        res = res | MS_DIRSYNC;
+      //}else if ( v[i] == "MS_LAZYTIME" ){
+      //  res = res | MS_LAZYTIME;
+      }else if ( v[i] == "MS_MANDLOCK" ){
+        res = res | MS_MANDLOCK;
+      }else if ( v[i] == "MS_NOATIME" ){
+        res = res | MS_NOATIME;
+      }else if ( v[i] == "MS_NODEV" ){
+        res = res | MS_NODEV;
+      }else if ( v[i] == "MS_NODIRATIME" ){
+        res = res | MS_NODIRATIME;
+      }else if ( v[i] == "MS_NOEXEC" ){
+        res = res | MS_NOEXEC;
+      }else if ( v[i] == "MS_NOSUID" ){
+        res = res | MS_NOSUID;
+      }else if ( v[i] == "MS_RDONLY" ){
+        res = res | MS_RDONLY;
+      }else if ( v[i] == "MS_REC" ){
+        res = res | MS_REC;
+      }else if ( v[i] == "MS_RELATIME" ){
+        res = res | MS_RELATIME;
+      }else if ( v[i] == "MS_SILENT" ){
+        res = res | MS_SILENT;
+      }else if ( v[i] == "MS_STRICTATIME" ){
+        res = res | MS_STRICTATIME;
+      }else if ( v[i] == "MS_SYNCHRONOUS" ){
+        res = res | MS_SYNCHRONOUS;
+      }else {
+        // unkown flag
+        return 0;
+      }
+    }
+    
+    return 1;
+      
+  }
+
+
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // RSYNC ERROR FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

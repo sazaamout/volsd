@@ -15,19 +15,18 @@
 // ----------------------------------------------------------------------
 // GLOBALS VARAIBLES AND STRUCTURES
 // ----------------------------------------------------------------------
-//#define INSTANCE_VIRT_TYPE  HVM;
-//#define aws_region  "us_east_1";
-std::string volume; // ? do we need?
-std::string instance_id;
-
-bool diskAcquireRequest = false;
-bool diskReleaseRequest = false;
-bool _onscreen          = false;
-std::string  mountPoint;
-std::string  serverIP;
-std::string  serverPort;
-int _loglevel = 3;
-
+  std::string volume; // ? do we need?
+  std::string instance_id;
+  std::string _conffile;
+  
+  bool diskAcquireRequest = false;
+  bool diskReleaseRequest = false;
+  bool _onscreen          = false;
+  std::string  mountPoint;
+  std::string  serverIP;
+  std::string  serverPort;
+  int _loglevel = 3;
+  utility::Configuration conf;
 // -----------------------------------------------------------------------------
 // FUNCTIONS PROTOTYPE
 // -----------------------------------------------------------------------------
@@ -45,12 +44,37 @@ using namespace utility;
 
 int main ( int argc, char* argv[] )
 {
+
   // user must be root
   if (!utility::is_root()){
     std::cout << "error: program must be ran as root\n";
     return 1;
   }
+  
+  // default value. This is going to be overridden if user specified -c option
+  _conffile = CLIENT_CONF_FILE;
   get_arguments( argc, argv );
+    
+  // Load the configurations from conf file
+  if ( !utility::load_configurations ( conf, _conffile ) ){
+    std::cout << "error: cannot locate configuration file\n";
+    return 1;
+  }
+  
+  std::cout << setw(20) << "NFSMountFlags" << "  " << conf.NFSMountFlags << "\n";
+  std::cout << setw(20) << "ServerIP" << "  " << conf.ServerIP << "\n";
+  std::cout << setw(20) << "ServerPort" << "  " << conf.ServerPort << "\n";
+  std::cout << setw(20) << "LogLevel" << "  " << conf.LogLevel << "\n";
+  std::cout << setw(20) << "LogFile" << "  " << conf.LogFile << "\n";
+  std::cout << setw(20) << "TargetFSMountPoint" << "  " << conf.TargetFSMountPoint << "\n";
+  std::cout << setw(20) << "TargetFSDevice" << "  " << conf.TargetFSDevice << "\n";
+  std::cout << setw(20) << "ForceMount" << "  " << conf.ForceMount << "\n";
+  std::cout << setw(20) << "Aws_Cmd" << "  " << conf.Aws_Cmd << "\n";
+  std::cout << setw(20) << "Aws_Region" << "  " << conf.Aws_Region << "\n";
+  std::cout << setw(20) << "Aws_ConfigFile" << "  " << conf.Aws_ConfigFile << "\n";
+  std::cout << setw(20) << "Aws_CredentialsFile" << "  " << conf.Aws_CredentialsFile << "\n";
+  
+  return 0;  
   
   // Collect instance information
   instance_id = utility::get_instance_id(); 
@@ -209,7 +233,7 @@ int main ( int argc, char* argv[] )
     int retry=0;
     bool mounted = false;
     while (!mounted) {
-      if ( !volumes.mount(t_volumeId, mountPoint, device, 0) ) {
+      if ( !volumes.mount( t_volumeId, mountPoint, device, 0 ) ) {
         logger.log("info", "", "volsd-client", 0, "failed to mount new volume. Retry");
       } else {
         logger.log("info", "", "volsd-client", 0, "new volume was mounted successfully");
@@ -300,15 +324,16 @@ int main ( int argc, char* argv[] )
     int c;
     opterr = 0;
 
-    while ((c = getopt (argc, argv, "a:r:c:p:shv")) != -1) 
+    while ((c = getopt (argc, argv, "a:r:c:i:p:shv")) != -1) 
       switch (c) {   
         case 'h':
-          printf("%s: -c x.x.x.x -p xxxx [options]\n", argv[0]);
+          printf("%s: -i 192.168.1.xx -p 9000 [options]\n", argv[0]);
           printf(" options:\n");
           printf("   -a  aquire a disk\n");
           printf("   -r  release a disk\n");
-          printf("   -c  volsd's server IP address\n");
-          printf("   -P  volsd's server port\n");
+          printf("   -i  volsd's server IP address\n");
+          printf("   -p  volsd's server port\n");
+          printf("   -c  configuration file path if somewhere else\n");
           printf("   -s  print logs to screen\n");
           printf("   -h  print this help menu\n");
           printf("   -v  version number\n");
@@ -333,14 +358,16 @@ int main ( int argc, char* argv[] )
           mountPoint = optarg;
           break;
 
-        case 'c':
+        case 'i':
           serverIP = optarg;
           break;
         
         case 'p':
           serverPort = optarg;
           break;
-
+        case 'c':
+          _conffile = optarg;
+          break;
         case '?':
           if (optopt == 'a'){
             fprintf (stderr, "Option -%c requires an argument.\n", optopt);
@@ -348,7 +375,10 @@ int main ( int argc, char* argv[] )
           }else if (optopt == 'r'){
             fprintf (stderr, "Option -%c requires an argument.\n", optopt);
             fprintf (stderr, "use -h for help.\n");
-          }else if (optopt == 'c'){
+         }else if (optopt == 'c'){
+            fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+            fprintf (stderr, "use -h for help.\n");
+          }else if (optopt == 'i'){
             fprintf (stderr, "Option -%c requires an argument.\n", optopt);
             fprintf (stderr, "use -h for help.\n");
           }else if (optopt == 'p'){
