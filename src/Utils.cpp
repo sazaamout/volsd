@@ -213,9 +213,10 @@ namespace utility
         value = trim(value);
 
         if ( key == "NFSMountFlags" ){
-          int mf; 
-          utility::convert_mount_flags(mf, value);
-          conf.NFSMountFlags = mf;
+          //unsigned long mf; 
+          //utility::convert_mount_flags(mf, value);
+          //conf.NFSMountFlags = mf;
+          conf.NFSMountFlags = value;
         } else if ( key == "ServerIP" ){
           conf.ServerIP = value;
         } else if ( key == "ServerPort" ){
@@ -228,6 +229,8 @@ namespace utility
           conf.TargetFSMountPoint = value;
         } else if ( key == "TargetFSDevice" ){
           conf.TargetFSDevice = value;
+        } else if ( key == "TargetFSType" ){
+          conf.TargetFSType = value;  
         } else if ( key == "ForceMount" ){
           conf.ForceMount = value;
         } else if ( key == "Aws_Cmd" ){
@@ -246,7 +249,7 @@ namespace utility
       
 
     }//~~End While Loop ~~//
-
+  
     return 1;
   }
 
@@ -585,7 +588,7 @@ namespace utility
   // MOUNT FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   bool mountfs( std::string &output, std::string mountPoint, std::string device ){
-       
+     
     const char* src  = device.c_str();
     const char* trgt = mountPoint.c_str();
     const char* type = "ext4";
@@ -604,29 +607,109 @@ namespace utility
 
     return true;
   }
-  
+ 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // MOUNT FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  bool mountfs( std::string& error,   const char* t_src,      const char* t_target,
+                const char* t_fsType, const char* t_mntflags, const char* t_opts ){
 
-  bool mountfs( std::string& error,  const char* t_src, const char* t_target, 
-                const char* t_fsType, const unsigned long t_mntflags, 
-                const char* t_opts ){
+    // 1. first, we need to convert t_mnt_flags
+    unsigned long mntflags;
+    utility::convert_mount_flags(mntflags, t_mntflags);
     
-    int result = mount(t_src, t_target, t_fsType, t_mntflags, t_opts);
+    // 2. now that they are converted, start mounting
+    int result = mount(t_src, t_target, t_fsType, mntflags, t_opts);
 
     if (result == 0) {
+      // if it is mounted, the open /proc/mounts file and find the mount entry
+      //struct mntent* part = (struct mntent*)malloc(sizeof(struct mntent));
+      struct mntent part;
+      if ( mnt_find( part, "/proc/mounts", t_src, t_target ) ){
+        mnt_add (&part, "/etc/mtab");
+        mnt_add (&part, "/etc/fstab");
+      }
+      
       return true;
     } else {
       error = strerror(errno);
       return false;
-    }   
+    }       
 
     return true;
   }
 
+  
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // MOUNT FUNCTION
+  // MNT_ADD FUNCTION
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  int mnt_add( struct mntent* part, std::string t_file ) {
+
+    FILE * mtab = NULL; 
+    //struct mntent* part = (struct mntent*)malloc(sizeof(struct mntent));
+    
+    printf("Inside the mnt_add function. Adding\n");
+    printf("mnt_fsname: %s\n", part->mnt_fsname);
+    printf("mnt_dir: %s\n",    part->mnt_dir);
+    printf("mnt_type: %s\n",   part->mnt_type);
+    printf("mnt_opts: %s\n",   part->mnt_opts);
+    
+    int is_mounted = 0;
+
+    //std::string file = "/etc/mtab";
+
+    if ( ( mtab = setmntent (t_file.c_str(), "a") ) != NULL) 
+    {
+      std::cout << "file was opened" << std::endl;
+
+      int res = addmntent(mtab, part);  
+
+      if (!res){ 
+        std::cout << "failed: " << res << "\n";
+        return 0;
+      } 
+
+      endmntent ( mtab ); 
+    } else {
+      std::cout << "could not open file\n";
+      return 0;
+    }
+
+    return 1;
+  }
+
+
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // UMOUNT FUNCTION
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  int mnt_find( struct mntent& res, const std::string t_file, const std::string t_mnt_fsname, 
+                const std::string t_mnt_dir ) {
+    FILE * mtab = NULL;
+    int is_mounted = 0;
+    struct mntent *part = NULL;
+    if ( ( mtab = setmntent (t_file.c_str(), "r") ) != NULL) {
+      while ( ( part = getmntent ( mtab) ) != NULL) {
+        if ( ( strcmp ( part->mnt_dir   , t_mnt_dir.c_str() )    == 0 ) && 
+               strcmp ( part->mnt_fsname, t_mnt_fsname.c_str() ) == 0 ) {
+          endmntent ( mtab);
+          res.mnt_fsname = part->mnt_fsname;
+          res.mnt_dir = part->mnt_dir;
+          res.mnt_type = part->mnt_type;
+          res.mnt_opts = part->mnt_opts;
+          res.mnt_freq = part->mnt_freq;
+          res.mnt_passno = part->mnt_passno;
+          return 1;
+        }
+      }
+      endmntent ( mtab);
+    }
+    return 0;
+
+  }
+
+
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // UMOUNT FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   bool umountfs( std::string &output, std::string mountPoint ){
     const char* trgt = mountPoint.c_str();
@@ -641,6 +724,8 @@ namespace utility
 
     return true;
   } 
+
+
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // is mounted FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -760,7 +845,7 @@ namespace utility
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // CONVERT MOUNT FLAGS
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  int convert_mount_flags ( int& res, const std::string& t_mountflags) {
+  unsigned long convert_mount_flags ( unsigned long& res, const std::string& t_mountflags) {
     
     // string is comma separated, put it in to vector
     std::vector<std::string> v = explode(t_mountflags, ',');

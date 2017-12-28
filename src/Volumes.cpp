@@ -166,11 +166,6 @@ int Volumes::attach( const std::string t_volumeId, const std::string t_device,
 }
 
 
-
-
-
-
-
 // =================================================================================================
 // Function: Mount
 // =================================================================================================
@@ -212,14 +207,63 @@ int Volumes::mount( const std::string t_volumeId, const std::string t_mountPoint
     return 0;
   }
   
+  return 1;
+}
+
+// =================================================================================================
+// Function: Mount
+// =================================================================================================
+int Volumes::mount( const std::string t_volumeId,  const std::string t_mountPoint, 
+                    const std::string t_device,    const std::string t_fsType, 
+                    const std::string t_mntflags, const int t_transactionId ) {
+  
+  // 1. check if the dir exist
+  if (!utility::is_exist(t_mountPoint)){
+    // create the directory
+    if (!utility::folder_create(t_mountPoint)) {
+      logger->log("debug", "", "volsd", t_transactionId, "cannot not create mountpoint:[" + 
+                  t_mountPoint + "]", "mount");
+      return 0;
+    }
+  } 
+  
+  // 2. check if it is used by another filesystem
+  if (utility::is_mounted(t_mountPoint)) {
+    logger->log("debug", "", "volsd", t_transactionId, 
+                "mountpoint cannot be used. It already been used by another filesystem", "mount");
+    return 0;
+  } 
+  
+  // 3. since it is exist, check if its already have data
+  if (!utility::folder_is_empty(t_mountPoint)) {
+    logger->log("debug", "", "volsd", t_transactionId, 
+                "mountpoint cannot be used. it has some data", "mount");
+    return 0;
+  }
+  
+  // all good, the start to mount the filesystem
+  logger->log("debug", "", "volsd", t_transactionId, 
+              "mounting volume:[" + t_volumeId + "] on device:[" + t_device + "] on mountPoint:[" + 
+              t_mountPoint + "]", "mount");
+              
+  std::string output;
   // use the new mount
-  //if ( !utility::mountfs( output, "/dev/"+t_device, t_mountPoint, "ext3", mp_flags, 0 ) ){
-	//  logger->log("error", "", "volsd", t_transactionId, "failed to mount volume. " + output, "mount");
-  //  return 0;
-  //}
+  //std::string d = "/dev/"+t_device;
+  if ( !utility::mountfs( output, 
+                          ("/dev/"+t_device).c_str(), 
+                          t_mountPoint.c_str(), 
+                          t_fsType.c_str(), 
+                          t_mntflags.c_str(), 
+                          "" 
+                        ) ){
+	  logger->log("error", "", "volsd", t_transactionId, "failed to mount volume. " + output, "mount");
+    return 0;
+  }
   
   return 1;
 }
+
+
 
 
 // =================================================================================================

@@ -78,13 +78,14 @@ namespace utility
     std::string RemoteMountPoint;
 
     // Client Configurations
-    int         NFSMountFlags;
+    std::string NFSMountFlags;
     std::string ServerIP;
     int         ServerPort;
     int         LogLevel;
     std::string LogFile;
     std::string TargetFSMountPoint;
     std::string TargetFSDevice;
+    std::string TargetFSType;
     std::string ForceMount;
     
     // aws cli configurations
@@ -134,19 +135,24 @@ namespace utility
   bool folder_is_empty(const std::string dirname);
   bool folder_remove( const std::string dirname);
   bool mountfs ( std::string &output, std::string mountPoint, std::string device );
-  bool mountfs ( std::string& error,  const char* t_src, const char* t_target, 
-                const char* t_fsType, const unsigned long t_mntflags, 
-                const char* t_opts );
-  bool umountfs( std::string &output, std::string mountPoint );
-  bool is_mounted( const std::string t_dir);
   
+  bool mountfs( std::string& error,   const char* t_src,            const char* t_target,
+                const char* t_fsType, const char* t_mntflags, const char* t_opts );
+
+  bool umountfs( std::string &output, std::string mountPoint );
+  
+  bool is_mounted( const std::string t_dir);
+
+  int mnt_add( struct mntent* part, std::string t_file );
+  int mnt_find( struct mntent& part, const std::string t_file, const std::string t_mnt_fsname, 
+                const std::string t_mnt_dir );
   int send_email(std::string title, std::string message, std::string to);
   std::string rsync_errorCodetoString(int errorCode);
   std::string get_hostname();
 
   std::string trim(std::string const& str);
   std::vector<std::string> explode( const std::string& str, const char token );
-  int convert_mount_flags( int& res, const std::string& t_mountflags);
+  unsigned long  convert_mount_flags( unsigned long& res, const std::string& t_mountflags);
   
 }
 

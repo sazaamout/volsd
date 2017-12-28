@@ -51,20 +51,25 @@ class Volumes
 
     int create( std::string &t_volumeId, const std::string t_latestSnapshot, 
                 const int t_transactionId );
+    
     int attach( const std::string t_volumeId, const std::string t_device, 
                 const std::string t_instanceId, const int t_transcation );    
     
     int mount( const std::string t_volumeId, const std::string t_mountPoint, 
-               const std::string t_device, const int t_transactionId );
+               const std::string t_device, const int t_transactionId ); 
+    
+    int mount( const std::string t_volumeId,  const std::string t_mountPoint, 
+               const std::string t_device,    const std::string t_fsType, 
+               const std::string t_mntflags, const int t_transactionId );
+    
     bool umount( const std::string t_volumeId, const std::string t_mountPoint, 
                  const int t_transactionId );
     void remount();
+    
     int detach( const std::string t_idleVolId, const int t_transactionId );
+    
     int del(const std::string t_volumeId, int t_transactionId);
-    
-    
-    
-    
+        
     // m_volumes modifiers function
     int update ( const std::string volumeId, const std::string key, const std::string value , 
                  const int transactionId, std::string t_ip = "", std::string t_remoteMountPoint = "", 

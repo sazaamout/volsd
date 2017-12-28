@@ -61,20 +61,38 @@ int main ( int argc, char* argv[] )
     return 1;
   }
   
-  std::cout << setw(20) << "NFSMountFlags" << "  " << conf.NFSMountFlags << "\n";
-  std::cout << setw(20) << "ServerIP" << "  " << conf.ServerIP << "\n";
-  std::cout << setw(20) << "ServerPort" << "  " << conf.ServerPort << "\n";
-  std::cout << setw(20) << "LogLevel" << "  " << conf.LogLevel << "\n";
-  std::cout << setw(20) << "LogFile" << "  " << conf.LogFile << "\n";
-  std::cout << setw(20) << "TargetFSMountPoint" << "  " << conf.TargetFSMountPoint << "\n";
-  std::cout << setw(20) << "TargetFSDevice" << "  " << conf.TargetFSDevice << "\n";
-  std::cout << setw(20) << "ForceMount" << "  " << conf.ForceMount << "\n";
-  std::cout << setw(20) << "Aws_Cmd" << "  " << conf.Aws_Cmd << "\n";
-  std::cout << setw(20) << "Aws_Region" << "  " << conf.Aws_Region << "\n";
-  std::cout << setw(20) << "Aws_ConfigFile" << "  " << conf.Aws_ConfigFile << "\n";
-  std::cout << setw(20) << "Aws_CredentialsFile" << "  " << conf.Aws_CredentialsFile << "\n";
+  //std::cout << setw(20) << "NFSMountFlags" << "  " << conf.NFSMountFlags << "\n";
+  //std::cout << setw(20) << "ServerIP" << "  " << conf.ServerIP << "\n";
+  //std::cout << setw(20) << "ServerPort" << "  " << conf.ServerPort << "\n";
+  //std::cout << setw(20) << "LogLevel" << "  " << conf.LogLevel << "\n";
+  //std::cout << setw(20) << "LogFile" << "  " << conf.LogFile << "\n";
+  //std::cout << setw(20) << "TargetFSMountPoint" << "  " << conf.TargetFSMountPoint << "\n";
+  //std::cout << setw(20) << "TargetFSDevice" << "  " << conf.TargetFSDevice << "\n";
+  //std::cout << setw(20) << "TargetFSType" << "  " << conf.TargetFSType << "\n";
+  //std::cout << setw(20) << "ForceMount" << "  " << conf.ForceMount << "\n";
+  //std::cout << setw(20) << "Aws_Cmd" << "  " << conf.Aws_Cmd << "\n";
+  //std::cout << setw(20) << "Aws_Region" << "  " << conf.Aws_Region << "\n";
+  //std::cout << setw(20) << "Aws_ConfigFile" << "  " << conf.Aws_ConfigFile << "\n";
+  //std::cout << setw(20) << "Aws_CredentialsFile" << "  " << conf.Aws_CredentialsFile << "\n";
   
-  return 0;  
+  std::string output;
+  //utility::mountfs( output,
+  //                  conf.TargetFSDevice.c_str(), 
+  //                  conf.TargetFSMountPoint.c_str(), 
+  //                  conf.TargetFSType.c_str(), 
+  //                  conf.NFSMountFlags.c_str(),
+  //                  "");
+  std::string device = "/dev/xvdb";
+  std::string mp = "/mnt/test";
+  
+  utility::mountfs( output,
+                    device.c_str(), 
+                    mp.c_str(), 
+                    conf.TargetFSType.c_str(), 
+                    conf.NFSMountFlags.c_str(),
+                    "");
+  
+  return 0;
   
   // Collect instance information
   instance_id = utility::get_instance_id(); 
