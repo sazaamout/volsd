@@ -268,8 +268,7 @@ int Volumes::mount( const std::string t_volumeId,  const std::string t_mountPoin
               "mntflags :[" + t_mntflags + "] fstype:[" + t_fsType + "]", "mount");
               
   std::string output;
-  // use the new mount
-  
+     
   if ( !utility::mountfs( output, 
                           ("/dev/"+t_device).c_str(), 
                           t_mountPoint.c_str(), 

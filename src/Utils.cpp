@@ -616,19 +616,20 @@ namespace utility
 
     // 1. first, we need to convert t_mnt_flags
     unsigned long mntflags = 0;
-    if (t_mntflags != NULL){
-      std::cout << "MoutFlags != \"\"\n";
-      printf("mntflags: [%s]\n", t_mntflags);
+    char* fstype =  const_cast<char*>(t_fsType);
+    
+    if ( (t_mntflags != NULL) && (t_mntflags[0] != '\0') ){
       if (!utility::convert_mount_flags(mntflags, t_mntflags)){
         error = "unkown mounting flags options";
         return 0;
       }
     } else {
-      std::cout << "MoutFlags == \"\"\n";
+      mntflags = 0;
+      fstype = (char*)"ext4";
     }
     
     // 2. now that they are converted, start mounting
-    int result = mount(t_src, t_target, t_fsType, mntflags, t_opts);
+    int result = mount(t_src, t_target, fstype, mntflags, t_opts);
     
     if (result == 0) {
       // if it is mounted, then an entry can be found in /proc/mounts file
