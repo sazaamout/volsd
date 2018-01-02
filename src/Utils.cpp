@@ -615,12 +615,17 @@ namespace utility
                 const char* t_fsType, const char* t_mntflags, const char* t_opts ){
 
     // 1. first, we need to convert t_mnt_flags
-    unsigned long mntflags;
-    utility::convert_mount_flags(mntflags, t_mntflags);
+    unsigned long mntflags = 0;
+    if (t_mntflags != ""){
+      if (!utility::convert_mount_flags(mntflags, t_mntflags)){
+        error = "unkown mounting flags options";
+        return 0;
+      }
+    }
     
     // 2. now that they are converted, start mounting
     int result = mount(t_src, t_target, t_fsType, mntflags, t_opts);
-
+    
     if (result == 0) {
       // if it is mounted, then an entry can be found in /proc/mounts file
       // finds it and get its options 
@@ -647,11 +652,11 @@ namespace utility
     FILE * mtab = NULL; 
     //struct mntent* part = (struct mntent*)malloc(sizeof(struct mntent));
     
-    printf("Inside the mnt_add function. Adding\n");
-    printf("mnt_fsname: %s\n", part->mnt_fsname);
-    printf("mnt_dir: %s\n",    part->mnt_dir);
-    printf("mnt_type: %s\n",   part->mnt_type);
-    printf("mnt_opts: %s\n",   part->mnt_opts);
+    //printf("Inside the mnt_add function. Adding\n");
+    //printf("mnt_fsname: %s\n", part->mnt_fsname);
+    //printf("mnt_dir: %s\n",    part->mnt_dir);
+    //printf("mnt_type: %s\n",   part->mnt_type);
+    //printf("mnt_opts: %s\n",   part->mnt_opts);
     
     int is_mounted = 0;
 
@@ -659,18 +664,18 @@ namespace utility
 
     if ( ( mtab = setmntent (t_file.c_str(), "a") ) != NULL) 
     {
-      std::cout << "file was opened" << std::endl;
+      //std::cout << "file was opened" << std::endl;
 
       int res = addmntent(mtab, part);  
 
       if (!res){ 
-        std::cout << "failed: " << res << "\n";
+        //std::cout << "failed: " << res << "\n";
         return 0;
       } 
 
       endmntent ( mtab ); 
     } else {
-      std::cout << "could not open file\n";
+      //std::cout << "could not open file\n";
       return 0;
     }
 
@@ -679,17 +684,27 @@ namespace utility
 
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // UMOUNT FUNCTION
+  // MNT FIND FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   int mnt_find( struct mntent& res, const std::string t_file, const std::string t_mnt_fsname, 
                 const std::string t_mnt_dir ) {
+      
+    std::string mnt_dir = t_mnt_dir;
+    if ( t_mnt_dir[t_mnt_dir.length()-1] == '/' ){
+      mnt_dir = t_mnt_dir.substr(0, t_mnt_dir.length()-1);
+    }
+      
+    
     FILE * mtab = NULL;
     int is_mounted = 0;
     struct mntent *part = NULL;
     if ( ( mtab = setmntent (t_file.c_str(), "r") ) != NULL) {
       while ( ( part = getmntent ( mtab) ) != NULL) {
-        if ( ( strcmp ( part->mnt_dir   , t_mnt_dir.c_str() )    == 0 ) && 
+        if ( ( strcmp ( part->mnt_dir   , mnt_dir.c_str() )    == 0 ) && 
+            
                strcmp ( part->mnt_fsname, t_mnt_fsname.c_str() ) == 0 ) {
+    
+           
           endmntent ( mtab);
           res.mnt_fsname = part->mnt_fsname;
           res.mnt_dir = part->mnt_dir;
@@ -702,6 +717,7 @@ namespace utility
       }
       endmntent ( mtab);
     }
+    
     return 0;
 
   }
@@ -712,9 +728,12 @@ namespace utility
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   bool umountfs( std::string &output, std::string mountPoint ){
     const char* trgt = mountPoint.c_str();
-    int result = umount(trgt);
+    int result = umount2(trgt, MNT_DETACH);
 
     if (result == 0) {
+      // TODO: delete from /etc/mtab and /etc/fstab
+      //mnt_delete( mountPoint );
+      
       return true;
     } else {
       output = strerror(errno);
@@ -748,6 +767,41 @@ namespace utility
     }
 
     return is_mounted;
+  }
+  
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // is mounted FUNCTION
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  bool get_mntInfo( std::string& res, const std::string t_query, const std::string t_file, 
+                    const std::string t_dir ){
+    std::string dir = t_dir;
+
+    // if directory ends with '\', remove it
+    if ( dir[dir.length()-1] == '/' )
+      dir = dir.substr(0, dir.length()-1);
+
+    FILE * mtab = NULL;
+    struct mntent * part = NULL;
+    int is_mounted = 0;
+    if ( ( mtab = setmntent (t_file.c_str(), "r") ) != NULL) {
+      while ( ( part = getmntent ( mtab) ) != NULL) {
+        if ( ( part->mnt_dir != NULL )  && ( strcmp ( part->mnt_dir, dir.c_str() ) ) == 0 ) {
+          
+          if (t_query == "device") {
+            res = part->mnt_fsname;
+          } 
+          if (t_query == "flags") {
+            res = part->mnt_opts;
+          }  
+          endmntent ( mtab);
+          return 1;
+          
+        }
+      }
+      endmntent ( mtab);
+    }
+
+    return 0;
   }
   
   
@@ -893,7 +947,7 @@ namespace utility
       }else if ( v[i] == "MS_SYNCHRONOUS" ){
         res = res | MS_SYNCHRONOUS;
       }else {
-        // unkown flag
+        res = 0;
         return 0;
       }
     }

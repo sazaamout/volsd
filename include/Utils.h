@@ -142,7 +142,9 @@ namespace utility
   bool umountfs( std::string &output, std::string mountPoint );
   
   bool is_mounted( const std::string t_dir);
-
+  bool get_mntInfo( std::string& res, const std::string t_query, const std::string t_file, 
+                    const std::string t_dir );
+  
   int mnt_add( struct mntent* part, std::string t_file );
   int mnt_find( struct mntent& part, const std::string t_file, const std::string t_mnt_fsname, 
                 const std::string t_mnt_dir );

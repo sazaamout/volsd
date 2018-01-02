@@ -12,6 +12,8 @@
 #include "Logger.h"
 #include "Config.h"
 
+
+
 // ----------------------------------------------------------------------
 // GLOBALS VARAIBLES AND STRUCTURES
 // ----------------------------------------------------------------------
@@ -22,10 +24,13 @@
   bool diskAcquireRequest = false;
   bool diskReleaseRequest = false;
   bool _onscreen          = false;
-  std::string  mountPoint;
-  std::string  serverIP;
-  std::string  serverPort;
-  int _loglevel = 3;
+  bool _forceMount        = false;
+  int _loglevel           = 3;
+  std::string mountPoint;
+  std::string serverIP;
+  std::string serverPort;
+  std::string fsType; 
+  std::string mountFlags;
   utility::Configuration conf;
 // -----------------------------------------------------------------------------
 // FUNCTIONS PROTOTYPE
@@ -45,6 +50,7 @@ using namespace utility;
 int main ( int argc, char* argv[] )
 {
 
+ 
   // user must be root
   if (!utility::is_root()){
     std::cout << "error: program must be ran as root\n";
@@ -52,48 +58,15 @@ int main ( int argc, char* argv[] )
   }
   
   // default value. This is going to be overridden if user specified -c option
-  _conffile = CLIENT_CONF_FILE;
+  //_conffile = CLIENT_CONF_FILE;
   get_arguments( argc, argv );
     
   // Load the configurations from conf file
-  if ( !utility::load_configurations ( conf, _conffile ) ){
-    std::cout << "error: cannot locate configuration file\n";
-    return 1;
-  }
-  
-  //std::cout << setw(20) << "NFSMountFlags" << "  " << conf.NFSMountFlags << "\n";
-  //std::cout << setw(20) << "ServerIP" << "  " << conf.ServerIP << "\n";
-  //std::cout << setw(20) << "ServerPort" << "  " << conf.ServerPort << "\n";
-  //std::cout << setw(20) << "LogLevel" << "  " << conf.LogLevel << "\n";
-  //std::cout << setw(20) << "LogFile" << "  " << conf.LogFile << "\n";
-  //std::cout << setw(20) << "TargetFSMountPoint" << "  " << conf.TargetFSMountPoint << "\n";
-  //std::cout << setw(20) << "TargetFSDevice" << "  " << conf.TargetFSDevice << "\n";
-  //std::cout << setw(20) << "TargetFSType" << "  " << conf.TargetFSType << "\n";
-  //std::cout << setw(20) << "ForceMount" << "  " << conf.ForceMount << "\n";
-  //std::cout << setw(20) << "Aws_Cmd" << "  " << conf.Aws_Cmd << "\n";
-  //std::cout << setw(20) << "Aws_Region" << "  " << conf.Aws_Region << "\n";
-  //std::cout << setw(20) << "Aws_ConfigFile" << "  " << conf.Aws_ConfigFile << "\n";
-  //std::cout << setw(20) << "Aws_CredentialsFile" << "  " << conf.Aws_CredentialsFile << "\n";
-  
-  std::string output;
-  //utility::mountfs( output,
-  //                  conf.TargetFSDevice.c_str(), 
-  //                  conf.TargetFSMountPoint.c_str(), 
-  //                  conf.TargetFSType.c_str(), 
-  //                  conf.NFSMountFlags.c_str(),
-  //                  "");
-  std::string device = "/dev/xvdb";
-  std::string mp = "/mnt/test";
-  
-  utility::mountfs( output,
-                    device.c_str(), 
-                    mp.c_str(), 
-                    conf.TargetFSType.c_str(), 
-                    conf.NFSMountFlags.c_str(),
-                    "");
-  
-  return 0;
-  
+  //if ( !utility::load_configurations ( conf, _conffile ) ){
+  //  std::cout << "error: cannot locate configuration file\n";
+  //  return 1;
+  //}
+   
   // Collect instance information
   instance_id = utility::get_instance_id(); 
   
@@ -251,7 +224,7 @@ int main ( int argc, char* argv[] )
     int retry=0;
     bool mounted = false;
     while (!mounted) {
-      if ( !volumes.mount( t_volumeId, mountPoint, device, 0 ) ) {
+      if ( !volumes.mount( t_volumeId, mountPoint, device, fsType, mountFlags, 0 ) ) {
         logger.log("info", "", "volsd-client", 0, "failed to mount new volume. Retry");
       } else {
         logger.log("info", "", "volsd-client", 0, "new volume was mounted successfully");
@@ -342,7 +315,7 @@ int main ( int argc, char* argv[] )
     int c;
     opterr = 0;
 
-    while ((c = getopt (argc, argv, "a:r:c:i:p:shv")) != -1) 
+    while ((c = getopt (argc, argv, "a:r:i:p:m:t:fshv")) != -1) 
       switch (c) {   
         case 'h':
           printf("%s: -i 192.168.1.xx -p 9000 [options]\n", argv[0]);
@@ -351,7 +324,10 @@ int main ( int argc, char* argv[] )
           printf("   -r  release a disk\n");
           printf("   -i  volsd's server IP address\n");
           printf("   -p  volsd's server port\n");
-          printf("   -c  configuration file path if somewhere else\n");
+          //printf("   -c  configuration file path if somewhere else\n");
+          printf("   -m  mount options\n");
+          printf("   -t  filesystem type (ex: ext3, ext4)\n");
+          printf("   -f  forcemount: delete any data in mount point before mounting\n");
           printf("   -s  print logs to screen\n");
           printf("   -h  print this help menu\n");
           printf("   -v  version number\n");
@@ -383,9 +359,23 @@ int main ( int argc, char* argv[] )
         case 'p':
           serverPort = optarg;
           break;
-        case 'c':
-          _conffile = optarg;
+
+        //case 'c':
+        //  _conffile = optarg;
+        //  break;
+
+        case 'm':
+          mountFlags = optarg;
           break;
+
+        case 't':
+          fsType = optarg;
+          break;
+
+        case 'f':
+          _forceMount = true;
+          break;
+
         case '?':
           if (optopt == 'a'){
             fprintf (stderr, "Option -%c requires an argument.\n", optopt);
@@ -393,7 +383,13 @@ int main ( int argc, char* argv[] )
           }else if (optopt == 'r'){
             fprintf (stderr, "Option -%c requires an argument.\n", optopt);
             fprintf (stderr, "use -h for help.\n");
-         }else if (optopt == 'c'){
+          //}else if (optopt == 'c'){
+          //  fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+          //  fprintf (stderr, "use -h for help.\n");
+          }else if (optopt == 'm'){
+            fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+            fprintf (stderr, "use -h for help.\n");
+          }else if (optopt == 't'){
             fprintf (stderr, "Option -%c requires an argument.\n", optopt);
             fprintf (stderr, "use -h for help.\n");
           }else if (optopt == 'i'){

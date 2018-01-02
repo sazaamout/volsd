@@ -245,10 +245,13 @@ int Volumes::mount( const std::string t_volumeId,  const std::string t_mountPoin
   logger->log("debug", "", "volsd", t_transactionId, 
               "mounting volume:[" + t_volumeId + "] on device:[" + t_device + "] on mountPoint:[" + 
               t_mountPoint + "]", "mount");
+  
+  logger->log("debug", "", "volsd", t_transactionId, 
+              "mntflags :[" + t_mntflags + "] fstype:[" + t_fsType + "]", "mount");
               
   std::string output;
   // use the new mount
-  //std::string d = "/dev/"+t_device;
+  
   if ( !utility::mountfs( output, 
                           ("/dev/"+t_device).c_str(), 
                           t_mountPoint.c_str(), 
@@ -276,7 +279,7 @@ int Volumes::detach( const std::string t_idleVolId, const int t_transactionId ){
               t_idleVolId + "] from instance", "");
 
   int res = utility::exec(output, "/usr/bin/aws ec2 detach-volume --volume-id " + 
-            t_idleVolId + " --region us-east-1");
+            t_idleVolId + " --force --region us-east-1");
   if (!res)   {
     logger->log("debug", "", "volsd", t_transactionId, "detaching volume[" + t_idleVolId + 
                 "] failed. Exit(" + utility::to_string(res) + ")", "detach");
@@ -336,6 +339,7 @@ bool Volumes::umount( const std::string t_volumeId, const std::string t_mountPoi
   if (!utility::umountfs( output, t_mountPoint)) {
     logger->log("debug", "", "volsd", t_transactionId, "failed to umount volume:[" + t_volumeId + 
                 "]", "umount");
+    logger->log("debug", "", "volsd", t_transactionId, "Error: " + output + "]", "umount");
   }
   
   logger->log("debug", "", "volsd", t_transactionId, "umount volume:[" + t_volumeId + 
@@ -663,15 +667,17 @@ int Volumes::release_volume( std::string& v, std::string t_instanceId, std::stri
                              int t_transactionId ) {
 
   std::string output;
-
+  
+  
+  
   // 1. given a mountPoint, get the device name
   logger->log("info", "", "volsd", t_transactionId, "get the device name for the mounted volume");
-  int res = utility::exec(output,  "df " + t_mountPoint + " | grep " +  t_mountPoint + 
-                          " | grep -oP ^/dev/[a-z0-9/]+");
-  if (!res) {
+  
+  if (!utility::get_mntInfo ( output, "device", "/proc/mounts" , "/home/cde")){
     logger->log("error", "", "volsd", t_transactionId, "mountPoint does not exist");
     return 0;
   }
+    
   std::string device = output;
   output.clear();
   
@@ -687,7 +693,7 @@ int Volumes::release_volume( std::string& v, std::string t_instanceId, std::stri
                     device + "\'].Ebs.VolumeId\" --output text --region us-east-1";
                     
   logger->log("debug", "", "volsd", t_transactionId, "Command: " + cmd);
-  res = utility::exec(output,  cmd);
+  int res = utility::exec(output,  cmd);
   if (!res) {
     logger->log("error", "", "volsd", t_transactionId, "command returned " + res);
     return 0;
