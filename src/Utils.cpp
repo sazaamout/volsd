@@ -622,14 +622,13 @@ namespace utility
     int result = mount(t_src, t_target, t_fsType, mntflags, t_opts);
 
     if (result == 0) {
-      // if it is mounted, the open /proc/mounts file and find the mount entry
-      //struct mntent* part = (struct mntent*)malloc(sizeof(struct mntent));
+      // if it is mounted, then an entry can be found in /proc/mounts file
+      // finds it and get its options 
       struct mntent part;
       if ( mnt_find( part, "/proc/mounts", t_src, t_target ) ){
         mnt_add (&part, "/etc/mtab");
         mnt_add (&part, "/etc/fstab");
       }
-      
       return true;
     } else {
       error = strerror(errno);
