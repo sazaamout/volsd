@@ -54,9 +54,14 @@ The system consist of the following components:
   aws s3 cp s3://location/of/client/program/in/s3/volsd-client .
   chmod u+x volsd-client
   # run the client program to aquire a volume for this instance
-  volsd-client -c serverIPAddress -p ServerPort -a /directory/to/be/used/to/mount/the/volume
+  volsd-client -c serverIPAddress -p ServerPort -a /directory/to/be/used/to/mount/the/volume [-m "mountOptions"] [-t fstype]
   ```
   2. The client program (executable/binary) have to be part of the EC2 image. You can either install it and create an image of that instance. Or you can put it on an s3 bucket and download to the insane being created using the user-data. 
+  
+  Note:
+  MountOptions must be comma separated. Not specifying mountoptions will cause the program to use the dafault values (rw). For a list of all mount options please visit the following page:
+  http://man7.org/linux/man-pages/man2/mount.2.html
+  
   
 
 # Dependencies And System Requirements #
