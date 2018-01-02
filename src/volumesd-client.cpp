@@ -212,7 +212,7 @@ int main ( int argc, char* argv[] )
       logger.log("info", "", "volsd-client", 0, "volume was removed from AWS space");
       return 0;
     }
-    logger.log("info", "", "volsd-client", 0, "volume was attached successfully");
+    logger.log("info", "", "volsd-client", 0, "volume was attached successfully on " + device);
 
     // this sleep is needed since Amazon takes time to attach the volume
     sleep(5);
@@ -224,7 +224,7 @@ int main ( int argc, char* argv[] )
     int retry=0;
     bool mounted = false;
     while (!mounted) {
-      if ( !volumes.mount( t_volumeId, mountPoint, device, fsType, mountFlags, 0 ) ) {
+      if ( !volumes.mount( t_volumeId, mountPoint, device, fsType, mountFlags, 0, _forceMount) ) {
         logger.log("info", "", "volsd-client", 0, "failed to mount new volume. Retry");
       } else {
         logger.log("info", "", "volsd-client", 0, "new volume was mounted successfully");

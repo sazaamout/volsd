@@ -616,11 +616,15 @@ namespace utility
 
     // 1. first, we need to convert t_mnt_flags
     unsigned long mntflags = 0;
-    if (t_mntflags != ""){
+    if (t_mntflags != NULL){
+      std::cout << "MoutFlags != \"\"\n";
+      printf("mntflags: [%s]\n", t_mntflags);
       if (!utility::convert_mount_flags(mntflags, t_mntflags)){
         error = "unkown mounting flags options";
         return 0;
       }
+    } else {
+      std::cout << "MoutFlags == \"\"\n";
     }
     
     // 2. now that they are converted, start mounting
@@ -832,7 +836,10 @@ namespace utility
     return 1;
   }
   
-  
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // FOLDER REMOVE FUNCTION
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // remove an emoty directory. If has some data, it will not be removed
   bool folder_remove( const std::string dirname){
     if ( rmdir(dirname.c_str()) == -1) {
       return false;
@@ -840,6 +847,24 @@ namespace utility
     return true;
   }
 
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // FOLDER REMOVE FUNCTION
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // remove an none empty dir
+  bool folder_remove2( const std::string dirname ){
+    
+    if ( ( dirname.empty() ) || ( dirname == "/" ) ) 
+      return false;
+      
+    std::string output;
+    int res = exec1(output, "rm -rf " + dirname );
+    
+    if ( ! res ) {
+      return false;
+    }
+    return true;
+  }
+  
     
   bool is_empty(std::string path){
     std::fstream myFile;

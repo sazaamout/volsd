@@ -215,7 +215,8 @@ int Volumes::mount( const std::string t_volumeId, const std::string t_mountPoint
 // =================================================================================================
 int Volumes::mount( const std::string t_volumeId,  const std::string t_mountPoint, 
                     const std::string t_device,    const std::string t_fsType, 
-                    const std::string t_mntflags, const int t_transactionId ) {
+                    const std::string t_mntflags, const int t_transactionId,
+                    const bool forceMount ) {
   
   // 1. check if the dir exist
   if (!utility::is_exist(t_mountPoint)){
@@ -235,11 +236,27 @@ int Volumes::mount( const std::string t_volumeId,  const std::string t_mountPoin
   } 
   
   // 3. since it is exist, check if its already have data
-  
   if (!utility::folder_is_empty(t_mountPoint)) {
-    logger->log("debug", "", "volsd", t_transactionId, 
+    if (forceMount) {
+      // empty
+      if (!folder_remove2(t_mountPoint)){
+        logger->log("debug", "", "volsd", t_transactionId, 
+                "forceMount was enabled but could not delete the directory", "mount");
+        return 0;
+      }
+      logger->log("debug", "", "volsd", t_transactionId, 
+                "directory was cleared from data since ForceMount was enabled", "mount");
+      // create new dir
+      if (!utility::folder_create(t_mountPoint)) {
+        logger->log("debug", "", "volsd", t_transactionId, "cannot not create mountpoint:[" + 
+                  t_mountPoint + "]", "mount");
+        return 0;
+      }
+    } else {
+      logger->log("debug", "", "volsd", t_transactionId, 
                 "mountpoint cannot be used. it has some data", "mount");
-    return 0;
+      return 0;
+    }
   }
   
   // all good, the start to mount the filesystem

@@ -134,6 +134,7 @@ namespace utility
   bool folder_create(std::string path);
   bool folder_is_empty(const std::string dirname);
   bool folder_remove( const std::string dirname);
+  bool folder_remove2( const std::string dirname );
   bool mountfs ( std::string &output, std::string mountPoint, std::string device );
   
   bool mountfs( std::string& error,   const char* t_src,            const char* t_target,

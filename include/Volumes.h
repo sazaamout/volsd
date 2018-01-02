@@ -60,7 +60,7 @@ class Volumes
     
     int mount( const std::string t_volumeId,  const std::string t_mountPoint, 
                const std::string t_device,    const std::string t_fsType, 
-               const std::string t_mntflags, const int t_transactionId );
+               const std::string t_mntflags, const int t_transactionId, const bool forceMount );
     
     bool umount( const std::string t_volumeId, const std::string t_mountPoint, 
                  const int t_transactionId );
