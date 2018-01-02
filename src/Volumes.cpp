@@ -235,6 +235,7 @@ int Volumes::mount( const std::string t_volumeId,  const std::string t_mountPoin
   } 
   
   // 3. since it is exist, check if its already have data
+  
   if (!utility::folder_is_empty(t_mountPoint)) {
     logger->log("debug", "", "volsd", t_transactionId, 
                 "mountpoint cannot be used. it has some data", "mount");
