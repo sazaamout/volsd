@@ -108,9 +108,11 @@ namespace utility
   int exec(std::string& results, std::string cmd);
   int exec1(std::string& results, std::string cmd);
   std::string get_instance_id();
+  std::string get_instance_type();
+  std::string get_instance_zone();
   std::string randomString();
-	
-  
+	bool create_file(std::string path, std::string contents);
+  bool get_volume_info( std::string path, std::string &volumeId, std::string &device);
   int load_configuration(Configuration &conf, std::string conf_file);
   int load_configurations(Configuration &conf, std::string conf_file);
   void print_configuration(Configuration &conf);

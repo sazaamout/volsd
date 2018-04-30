@@ -120,7 +120,7 @@ namespace utility
   }
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // LOGGER FUNCTION
+  // GET INSTNACE ID FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   std::string get_instance_id(){
     std::string output;
@@ -128,7 +128,29 @@ namespace utility
     clean_string(output); 
     return output;
   }
-  
+
+
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // GET INSTNACE AVAILABILIT ZONE
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  std::string get_instance_zone(){
+    std::string output;
+    exec(output, "curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone");
+    clean_string(output); 
+    return output;
+  }
+
+
+
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // GET INSTANCE TYPE FUNCTION
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  std::string get_instance_type(){
+    std::string output;
+    exec(output, "curl -s http://169.254.169.254/latest/meta-data/instance-type");
+    clean_string(output); 
+    return output;
+  }  
   
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // LOGGER FUNCTION
@@ -497,7 +519,7 @@ namespace utility
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // IS_EXIST FUNCTION
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // used tocheck if files/directories exist
+  // used to check if files/directories exist
   bool is_exist(std::string path) {
     struct stat buffer;   
     return (stat (path.c_str(), &buffer) == 0); 
@@ -836,6 +858,40 @@ namespace utility
       
     return 1;
   }
+  
+  bool create_file(std::string path, std::string contents){
+    std::ofstream ofs;
+    ofs.open (path.c_str(), std::ofstream::out | std::ofstream::trunc);
+    ofs << contents;
+    ofs.close();
+  }
+  
+  bool get_volume_info( std::string path, std::string &volumeId, std::string &device){
+
+      // open the file for reading
+      std::ifstream ifs;
+      ifs.open(path.c_str());
+      if (ifs.is_open())
+      {
+        std::string line;
+        getline(ifs, line);
+
+        ifs.close();
+        if (line.length() == 0 ) {
+          return false;
+        }
+
+        std::vector<std::string> v = explode(line, ' ');
+        
+        volumeId = v[0];
+        device   = v[1];
+        return true;
+      } else {
+        return false;
+      }
+
+  }
+
   
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // FOLDER REMOVE FUNCTION

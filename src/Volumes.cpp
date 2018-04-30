@@ -51,14 +51,16 @@ void Volumes::set_logger_att( bool toScreen, std::string logFile, int loglevel )
 // Function: Create
 // =================================================================================================
 int Volumes::create( std::string &t_volumeId, const std::string t_latestSnapshot, 
-                     const int t_transactionId ){
+                     const std::string t_availability_zone, const int t_transactionId ){
   // create a volume from latest snapshot
   std::string newVolume;
   
+  // get the availability zone
+  
   int res = utility::exec (
             newVolume, 
-            "aws ec2 create-volume --region us-east-1 --availability-zone us-east-1a --snapshot-id " 
-            + t_latestSnapshot + " --volume-type gp2 --query VolumeId --output text"
+            "aws ec2 create-volume --region us-east-1 --availability-zone " + t_availability_zone + 
+            " --snapshot-id "  + t_latestSnapshot + " --volume-type gp2 --query VolumeId --output text"
             );
   
   if (!res){
@@ -680,48 +682,65 @@ int Volumes::is_attached( std::string t_instanceId, std::string t_volumeId, std:
 // =================================================================================================
 // Function: RELEASE_VOLUME
 // =================================================================================================
+// used by the volumesd-client program
 int Volumes::release_volume( std::string& v, std::string t_instanceId, std::string t_mountPoint, 
                              int t_transactionId ) {
 
   std::string output;
   
+  std::string instanceType = utility::get_instance_type();
+  
+  // open /etc/volume file and get the volumeId, device, 
+  logger->log("info", "", "volsd", t_transactionId, "Get the volume Information from file");
+  std::string volumeId, device;
+  
+  if (!utility::get_volume_info( "/etc/volume", volumeId, device)){
+    logger->log("info", "", "volsd", t_transactionId, "failed to get volume information");
+    return 0;
+  }
+  
+  logger->log("info", "", "volsd", t_transactionId, "volume information information was aquired");
+  logger->log("info", "", "volsd", t_transactionId, "volumeId:[" + volumeId + "] device:[" + device + "]");
+  
+  
+  
   
   
   // 1. given a mountPoint, get the device name
-  logger->log("info", "", "volsd", t_transactionId, "get the device name for the mounted volume");
+  //logger->log("info", "", "volsd", t_transactionId, "get the device name for the mounted volume");
   
-  if (!utility::get_mntInfo ( output, "device", "/proc/mounts" , "/home/cde")){
-    logger->log("error", "", "volsd", t_transactionId, "mountPoint does not exist");
-    return 0;
-  }
+  //if (!utility::get_mntInfo ( output, "device", "/proc/mounts" , "/home/cde")){
+  //  logger->log("error", "", "volsd", t_transactionId, "mountPoint does not exist");
+  //  return 0;
+  //}
     
-  std::string device = output;
-  output.clear();
+  //std::string device = output;
+  //output.clear();
   
-  utility::clean_string(device);
-  logger->log("info", "", "volsd", t_transactionId, "device was found: " + device);
+  //utility::clean_string(device);
+  //logger->log("info", "", "volsd", t_transactionId, "device was found: " + device);
 
 
   // 2. given the device, get the volume id.
-  logger->log("info", "", "volsd", t_transactionId, "acquiring the volume's Amazon Id");
-  std::string cmd = "aws ec2 describe-instances --instance-id " + 
-                    t_instanceId + 
-                    " --query \"Reservations[*].Instances[*].BlockDeviceMappings[\?DeviceName==\'" + 
-                    device + "\'].Ebs.VolumeId\" --output text --region us-east-1";
+  //logger->log("info", "", "volsd", t_transactionId, "acquiring the volume's Amazon Id");
+  //std::string cmd = "aws ec2 describe-instances --instance-id " + 
+  //                  t_instanceId + 
+  //                  " --query \"Reservations[*].Instances[*].BlockDeviceMappings[\?DeviceName==\'" + 
+  //                  device + "\'].Ebs.VolumeId\" --output text --region us-east-1";
                     
-  logger->log("debug", "", "volsd", t_transactionId, "Command: " + cmd);
-  int res = utility::exec(output,  cmd);
-  if (!res) {
-    logger->log("error", "", "volsd", t_transactionId, "command returned " + res);
-    return 0;
-  }
-  utility::clean_string(output);
-  std::string vol = output;
-  logger->log("info", "", "volsd", t_transactionId, "volume id was acquired: " + vol );
+  //logger->log("debug", "", "volsd", t_transactionId, "Command: " + cmd);
+  //int res = utility::exec(output,  cmd);
+  //if (!res) {
+  //  logger->log("error", "", "volsd", t_transactionId, "command returned " + res);
+  //  return 0;
+  //}
+  //utility::clean_string(output);
+  //std::string vol = output;
+  //logger->log("info", "", "volsd", t_transactionId, "volume id was acquired: " + vol );
   
   // now that we have the volume id, umount mountPoint and detach volume
   logger->log("info", "", "volsd", t_transactionId, "umounting volume");
-  if (!umount(vol, t_mountPoint, t_transactionId) ) {
+  if (!umount(volumeId, t_mountPoint, t_transactionId) ) {
     logger->log("error", "", "volsd", t_transactionId, "failed to umount volume");
     return 0;
   }
@@ -729,21 +748,21 @@ int Volumes::release_volume( std::string& v, std::string t_instanceId, std::stri
 
   // now detach file system
   logger->log("info", "", "volsd", t_transactionId, "detaching volume");
-  if ( !detach( vol, transactionId ) ) {
+  if ( !detach( volumeId, transactionId ) ) {
     logger->log("info", "", "volsd", t_transactionId, "failed to detach volume");
     //return 0;
   } else {
     logger->log("info", "", "volsd", t_transactionId, "detaching was successful");
     // now delete the volume
     logger->log("info", "", "volsd", t_transactionId, "removing volume from Amazon space");
-    if (!del( vol, t_transactionId )){
+    if (!del( volumeId, t_transactionId )){
       logger->log("error", "", "volsd", t_transactionId, "volume failed to be removed");
       return 0;
     }
     logger->log("info", "", "volsd", t_transactionId, "volume was deleted from Amazon space");
   }
       
-  v = vol;
+  v = volumeId;
   return 1;
 }
 
@@ -1063,10 +1082,12 @@ void Volumes::remount(){
 // =================================================================================================
 // Function: Aquire
 // =================================================================================================
-int Volumes::acquire( const std::string t_targetFileSystem, const std::string t_snapshotId, 
-                      const std::string t_rootMountsFolder, const std::string t_instanceId, 
-                      const int         t_transaction 
-                    ){
+int Volumes::acquire( const std::string t_targetFileSystem,  const std::string t_snapshotId, 
+                      const std::string t_rootMountsFolder,  const std::string t_instanceId,
+                      const std::string t_availability_zone ,const int         t_transaction  ){
+  // NOTE: This function will only work on instances that follows /dev/svdX formate. If you want to 
+  // run you volsd server on a bigger instance, you have to fix this function.
+  // 2018-04-30
   
   utility::Volume v;
   
@@ -1074,6 +1095,7 @@ int Volumes::acquire( const std::string t_targetFileSystem, const std::string t_
   // -----------------------------------------------------------------------------------------------   
   // 1) Prepare disk information.
   //------------------------------------------------------------------------------------------------
+  
   
   // get a device. 
   logger->log("info", "", "volsd", t_transaction, "allocating a device.");
@@ -1102,7 +1124,7 @@ int Volumes::acquire( const std::string t_targetFileSystem, const std::string t_
   logger->log("info", "", "volsd", t_transaction, 
               "create Volume from latest snapshot:[" + t_snapshotId +"]");
   std::string newVolId;
-  if ( !create( newVolId, t_snapshotId, t_transaction ) ){
+  if ( !create( newVolId, t_snapshotId, t_availability_zone, t_transaction ) ){
     logger->log("error", "", "volsd", t_transaction, "FALIED to create a volume");
     //remove_device
     utility::remove_element(m_devicesOnHold, v.device);

@@ -49,7 +49,7 @@ class Volumes
      
     void set_logger_att ( bool toScreen, std::string logFile, int loglevel );
 
-    int create( std::string &t_volumeId, const std::string t_latestSnapshot, 
+    int create( std::string &t_volumeId, const std::string t_latestSnapshot, const std::string t_availability_zone, 
                 const int t_transactionId );
     
     int attach( const std::string t_volumeId, const std::string t_device, 
@@ -89,7 +89,7 @@ class Volumes
     int release (std::string &volumeId, int t_transactionId);
     int acquire( const std::string t_targetFileSystem, const std::string t_snapshotId, 
                  const std::string t_rootMountsFolder, const std::string t_instanceId, 
-                 const int t_transaction );
+                 const std::string t_availability_zone, const int t_transaction );
     
     int remove_mountpoint(std::string mp, int transactionId, Logger& logger);
     int wait(std::string op, utility::Volume volume, int transactionId, Logger& logger);

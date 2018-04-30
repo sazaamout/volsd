@@ -26,11 +26,7 @@
   bool _onscreen          = false;
   bool _forceMount        = false;
   int _loglevel           = 3;
-  std::string mountPoint;
-  std::string serverIP;
-  std::string serverPort;
-  std::string fsType; 
-  std::string mountFlags;
+  std::string mountPoint, serverIP, serverPort, fsType, device, mountFlags;
   utility::Configuration conf;
 // -----------------------------------------------------------------------------
 // FUNCTIONS PROTOTYPE
@@ -185,12 +181,22 @@ int main ( int argc, char* argv[] )
   int mount_vol( Volumes &volumes, std::string t_volumeId, std::string t_mountPoint, 
                  Logger& logger) {
     
+    // NOTE: This function will only work on instances that follows /dev/svdX formate. If you want to 
+    // run you volsd server on a bigger instance, you have to fix this function.
+    // 2018-04-30
+    
+    // NOTE: This function is now works with the new format. Atatching a volume must be in /dev/xvdX 
+    //       and mounting a volumes can be done with /dev/xcdX as well as /dev/nvmeXn1.
+  
+  
     // -----------------------------------------------------------------------------------------------   
     // 1) Prepare disk information.
     //------------------------------------------------------------------------------------------------
   
     // get a device. 
-    std::string device = volumes.get_device();
+    // device must be supplied when running the cleint
+    //std::string device = volumes.get_device();
+    
     logger.log("info", "", "volsd-client", 0, "allocated device:[" + device + "]");
     
     std::string mountPoint = t_mountPoint;
@@ -229,6 +235,8 @@ int main ( int argc, char* argv[] )
       } else {
         logger.log("info", "", "volsd-client", 0, "new volume was mounted successfully");
         mounted = true;
+        // add the information of the volume in /etc/volume
+        utility::create_file("/etc/volume", t_volumeId + " " + device + " " + mountPoint );
       }
       
       if ((retry == 5) && (!mounted)){
@@ -315,10 +323,10 @@ int main ( int argc, char* argv[] )
     int c;
     opterr = 0;
 
-    while ((c = getopt (argc, argv, "a:r:i:p:m:t:fshv")) != -1) 
+    while ((c = getopt (argc, argv, "a:r:i:p:m:t:d:fshv")) != -1) 
       switch (c) {   
         case 'h':
-          printf("%s: -i 192.168.1.xx -p 9000 [options]\n", argv[0]);
+          printf("%s: -i 192.168.1.xx -p 9000 -d /dev/xvdf [options]\n", argv[0]);
           printf(" options:\n");
           printf("   -a  aquire a disk\n");
           printf("   -r  release a disk\n");
@@ -326,11 +334,14 @@ int main ( int argc, char* argv[] )
           printf("   -p  volsd's server port\n");
           //printf("   -c  configuration file path if somewhere else\n");
           printf("   -m  mount options\n");
+          printf("   -d  device to be used to attach volume\n");
           printf("   -t  filesystem type (ex: ext3, ext4)\n");
           printf("   -f  forcemount: delete any data in mount point before mounting\n");
           printf("   -s  print logs to screen\n");
           printf("   -h  print this help menu\n");
           printf("   -v  version number\n");
+          printf("Examples:\n");
+          printf(".\/volsd-client -i 10.2.1.150 -p 9000 -m \"MS_NODIRATIME,MS_NOATIME\" -t \"ext4\" -a \/home\/cde -d xvdf -f\n");
           exit (0);
         case 'v':
           printf("volsd-client version: %i.%i.%i\n", 
@@ -371,31 +382,18 @@ int main ( int argc, char* argv[] )
         case 't':
           fsType = optarg;
           break;
+          
+       case 'd':
+          device = optarg;
+          break;
 
         case 'f':
           _forceMount = true;
           break;
 
         case '?':
-          if (optopt == 'a'){
-            fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-            fprintf (stderr, "use -h for help.\n");
-          }else if (optopt == 'r'){
-            fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-            fprintf (stderr, "use -h for help.\n");
-          //}else if (optopt == 'c'){
-          //  fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-          //  fprintf (stderr, "use -h for help.\n");
-          }else if (optopt == 'm'){
-            fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-            fprintf (stderr, "use -h for help.\n");
-          }else if (optopt == 't'){
-            fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-            fprintf (stderr, "use -h for help.\n");
-          }else if (optopt == 'i'){
-            fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-            fprintf (stderr, "use -h for help.\n");
-          }else if (optopt == 'p'){
+          if ( (optopt == 'a') || (optopt == 'r') || (optopt == 'm') || (optopt == 't') || 
+               (optopt == 'd') || (optopt == 'i') || (optopt == 'p') ){
             fprintf (stderr, "Option -%c requires an argument.\n", optopt);
             fprintf (stderr, "use -h for help.\n");
           }else if (isprint (optopt)){
@@ -422,6 +420,10 @@ int main ( int argc, char* argv[] )
     }
     if ( serverPort.empty() ){
       printf("must specify volsd server port. Use -h for more information\n");
+      exit(1);
+    }
+    if ( device.empty() ){
+      printf("must specify device to attach the volime to. Use -h for more information\n");
       exit(1);
     }
     if ( ( ! diskAcquireRequest ) && ( ! diskReleaseRequest ) ) {

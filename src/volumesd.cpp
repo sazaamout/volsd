@@ -21,6 +21,7 @@
 
   std::string hostname; 
   std::string instance_id;
+  std::string availability_zone;
   std::vector<std::string>  devices_list;
 
   std::string _conffile;
@@ -166,6 +167,7 @@ int main ( int argc, char* argv[] ) {
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   hostname    = utility::get_hostname();
   instance_id = utility::get_instance_id();
+  availability_zone = utility::get_instance_zone();
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // 7. ensure that volumes are mounted
@@ -585,7 +587,7 @@ int main ( int argc, char* argv[] ) {
      
     // all of this operation myst be done in Volumes
     if (!volumes.acquire( conf.TargetFilesystemMountPoint, snapshotId, conf.TempMountPoint, 
-                          instance_id,  t_transactionId )) {
+                          instance_id, availability_zone,  t_transactionId )) {
       logger.log("info", "", "volsd", t_transactionId, "faield to acquire new volume.", "CV");
     }
     
