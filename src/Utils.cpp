@@ -296,77 +296,82 @@ namespace utility
         continue;
       } 
         std::stringstream ss(line);
-        ss >> key >> value;
-      
+        ss >> key;
+        ss >> value;
+        if (ss.fail())
+          value = "";
+        
       if ( key == "Hostname") {
         conf.Hostname = value;
-      }else if (key == "MaxIdleDisk") 
-        conf.MaxIdleDisk = utility::to_int(value);
-      else if ( key == "TargetFilesystemMountPoint" ){
+      }else if (key == "MaxIdleDisk"){
+          conf.MaxIdleDisk = utility::to_int(value);
+      }else if ( key == "TargetFilesystemMountPoint" ){
         if ( value[value.length()-1] != '/' )
           value = value + '/';
         conf.TargetFilesystemMountPoint = value;
-      }else if (key == "TargetFilesystemDevice" ) 
+      }else if (key == "TargetFilesystemDevice" ) {
         conf.TargetFilesystemDevice = value;
-      else if (key == "TargetFilesystem" ) 
-        conf.TargetFilesystem = value;
-      else if ( key == "TempMountPoint" ) {
+      }else if (key == "TargetFilesystem" ){
+          conf.TargetFilesystem = value;
+      }else if ( key == "TempMountPoint" ) {
         if ( value[value.length()-1] != '/' )
           value = value + '/';
         conf.TempMountPoint = value;
-      }else if ( key == "SnapshotFrequency" ) 
+      }else if ( key == "SnapshotFrequency" ) {
+
         conf.SnapshotFrequency = utility::to_int(value);
-      else if ( key == "SnapshotFile" ) 
+      }else if ( key == "SnapshotFile" ) {
+
         conf.SnapshotFile = value;
-      else if ( key == "SnapshotFileStorage" ) 
+      }else if ( key == "SnapshotFileStorage" ) {
         conf.SnapshotFileStorage = utility::to_int(value);
-      else if ( key == "SnapshotMaxNumber" ) 
+      }else if ( key == "SnapshotMaxNumber" ) {
         conf.SnapshotMaxNumber = utility::to_int(value);
-      else if ( key == "VolumeFilePath" )  
+      }else if ( key == "VolumeFilePath" )  {
         conf.VolumeFilePath = value;
-      else if ( key == "ManagerLogFile" ) 
+      }else if ( key == "ManagerLogFile" ) {
         conf.ManagerLogFile = value;
-      else if ( key == "DispatcherLogPrefix" ) 
+      }else if ( key == "DispatcherLogPrefix" ) {
         conf.DispatcherLogPrefix = value;
-      else if ( key == "ClientLogFile" ) 
+      }else if ( key == "ClientLogFile" ) {
         conf.ClientLogFile = value;
-      else if ( key == "DispatcherLoglevel" ) 
+      }else if ( key == "DispatcherLoglevel" ) {
         conf.DispatcherLoglevel = utility::to_int(value);
-      else if ( key == "ClientLoglevel" ) 
+      }else if ( key == "ClientLoglevel" ) {
         conf.ClientLoglevel = utility::to_int(value);
-      else if ( key == "SyncVolumes" ) 
+      }else if ( key == "SyncVolumes" ) {
         conf.SyncVolumes = value;
-      else if ( key == "SyncVolumesInterval" ) 
+      }else if ( key == "SyncVolumesInterval" ) {
         conf.SyncVolumesInterval = utility::to_int(value);
-      else if ( key == "SyncRequestsFile" ) 
+      }else if ( key == "SyncRequestsFile" ) {
         conf.SyncRequestsFile = value;
-      else if ( key == "SyncLogPrefix" ) 
+      }else if ( key == "SyncLogPrefix" ) {
         conf.SyncLogPrefix = value;          
-      else if ( key == "SyncLogLevel" ) 
+      }else if ( key == "SyncLogLevel" ) {
         conf.SyncLogLevel = utility::to_int(value);          
-      else if ( key == "SyncDatesFile" ) 
+      }else if ( key == "SyncDatesFile" ) {
         conf.SyncDatesFile = value;
-      else if ( key == "SyncServicePort" ) 
+      }else if ( key == "SyncServicePort" ) {
         conf.SyncServicePort = utility::to_int(value);
-      else if ( key == "SyncOutputEmailTo" ) 
+      }else if ( key == "SyncOutputEmailTo" ) {
         conf.SyncOutputEmailTo = value;
-      else if ( key == "SyncErrorEmailTo" ) 
+      }else if ( key == "SyncErrorEmailTo" ) {
         conf.SyncErrorEmailTo = value;
-      else if ( key == "EmailSyncOutput" ) 
+      }else if ( key == "EmailSyncOutput" ) {
         conf.EmailSyncOutput = value;
-      else if ( key == "EmailSyncError" ) 
+      }else if ( key == "EmailSyncError" ) {
         conf.EmailSyncError = value;
-      else if ( key == "LocalRsyncCommand" ) 
+      }else if ( key == "LocalRsyncCommand" ) {
         conf.LocalRsyncCommand = value;
-      else if ( key == "RemoteRsyncCommand" ) 
+      }else if ( key == "RemoteRsyncCommand" ) {
         conf.RemoteRsyncCommand = value;
-      else if ( key == "EmailPushOutput" ) 
+      }else if ( key == "EmailPushOutput" ) {
         conf.EmailPushOutput = value;
-      else if ( key == "EmailPushError" ) 
+      }else if ( key == "EmailPushError" ) {
         conf.EmailPushError = value;
-      else if ( key == "EmailPushEmail" ) 
+      }else if ( key == "EmailPushEmail" ) {
         conf.EmailPushEmail = value;
-      else if ( key == "RemoteMountPoint" ){
+      }else if ( key == "RemoteMountPoint" ){
         if ( value[value.length()-1] != '/' )
           value = value + '/';
         conf.RemoteMountPoint = value;
@@ -375,9 +380,9 @@ namespace utility
         std::vector<std::string> v = explode( value, ',' );
         for (int i=0; i<v.size(); i++)
           std::cout << v[i] << '\n';
-      }else 
+      }else {
         continue;
-
+      }
       line="";
       
     }

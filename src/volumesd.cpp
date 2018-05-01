@@ -124,6 +124,14 @@ int main ( int argc, char* argv[] ) {
   syncVolumes = ( conf.SyncVolumes == "yes") ? 1 : 0;
   syncPeriods = conf.SyncVolumesInterval;
   
+  std::cout << "[" << conf.TargetFilesystem << "]\n";
+  
+  if ( conf.TargetFilesystem == "" ){
+    std::cout << "error: must specify the TargetFilesystem volume id in the conf file\n";
+    return 1;
+  }
+ 
+   
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // 4. Ensure files and directories are created
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

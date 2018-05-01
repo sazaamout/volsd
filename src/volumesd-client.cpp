@@ -341,7 +341,7 @@ int main ( int argc, char* argv[] )
           printf("   -h  print this help menu\n");
           printf("   -v  version number\n");
           printf("Examples:\n");
-          printf(".\/volsd-client -i 10.2.1.150 -p 9000 -m \"MS_NODIRATIME,MS_NOATIME\" -t \"ext4\" -a \/home\/cde -d xvdf -f\n");
+          printf("volsd-client -i 10.2.1.150 -p 9000 -m \"MS_NODIRATIME,MS_NOATIME\" -t \"ext4\" -a /home/cde -d xvdf -f\n");
           exit (0);
         case 'v':
           printf("volsd-client version: %i.%i.%i\n", 
