@@ -139,15 +139,15 @@ int main ( int argc, char* argv[] )
           logger.log("error", "", "volsd-client", 0, "Maximum Number of volume reached");
           return false;
         
-        }else if (reply.compare("umountFailed") == 0) {
+        } else if (reply.compare("umountFailed") == 0) {
           logger.log("error", "", "volsd-client", 0, "server was unable unmount volume");
           return false;
 
-        }else if (reply.compare("detachFailed") == 0) {
+        } else if (reply.compare("detachFailed") == 0) {
           logger.log("error", "", "volsd-client", 0, "server was unable to detach volume");
           return false;
 
-        }else {
+        } else {
           // At this point, volumesd server have sent us the volumes Id
           int res = mount_vol(volumes, reply, mountPoint, logger);
           // chcek if mount was successfyl. If not, return Failed so disk status can be 
